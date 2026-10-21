@@ -15,12 +15,16 @@ test("upload, review-mode approvals, results tabs and downloads", async ({ page 
   await page.getByRole("button", { name: "Start" }).click();
 
   // approve each stage bundle until the run completes
-  const approve = page.getByRole("button", { name: "Approve", exact: true });
+  const approve = page.getByRole("button", { name: "Approve", exact: true, disabled: false });
+  const bundle = page.getByRole("heading", { name: / bundle$/ });
   const done = page.getByRole("tab", { name: "Overview" });
   for (let i = 0; i < 6; i++) {
     await expect(approve.or(done)).toBeVisible();
     if (await done.isVisible()) break;
+    const title = await bundle.textContent();
     await approve.click();
+    // wait until this bundle is gone: the next one, or the results
+    await expect.poll(async () => (await done.isVisible()) || ((await bundle.count()) > 0 && (await bundle.textContent()) !== title) || (await bundle.count()) === 0).toBe(true);
   }
   await expect(done).toBeVisible();
   await expect(page.getByText(/Held-out f1_macro/)).toBeVisible();

@@ -98,7 +98,8 @@ def report(out: Path, seeds_requested: int | None = None) -> dict:
         if "memory" in ok:
             mem = [dict(m, dataset=d, seed=s) for m, d, s in zip(ok.loc[ok["config"] == "E", "memory"], ok.loc[ok["config"] == "E", "dataset"],
                                                                  ok.loc[ok["config"] == "E", "seed"]) if isinstance(m, dict)]
-            pd.DataFrame(mem).to_csv(out / "memory.csv", index=False)
+            if mem:
+                pd.DataFrame(mem).to_csv(out / "memory.csv", index=False)
         failed = runs[~runs["status"].isin(["completed", "ok", "skipped", "not_applicable"])]
         summary["failed_runs"] = failed[["config", "dataset", "seed", "error"]].to_dict("records") if "error" in failed else []
         summary["skipped"] = runs[runs["status"].isin(["skipped", "not_applicable"])][["config", "dataset", "status"]].drop_duplicates().to_dict("records")
@@ -126,7 +127,7 @@ def _summary_md(out: Path, summary: dict) -> None:
                         ("hallucination.csv", "Hallucinated-claim rate"), ("calibration.csv", "Calibration bins"),
                         ("cost.csv", "Cost per run"), ("memory.csv", "Memory: suggested, entered, won")]:
         p = out / name
-        if p.exists():
+        if p.exists() and p.stat().st_size > 1:
             df = pd.read_csv(p)
             lines += [f"## {title}", "", df.to_markdown(index=False) if hasattr(df, "to_markdown") else df.to_string(index=False), ""]
     cal = summary.get("calibration")

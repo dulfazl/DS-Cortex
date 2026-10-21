@@ -14,3 +14,7 @@ frontend/.next/
 frontend/test-results/
 frontend/playwright-report/
 .DS_Store
+# evaluation outputs: commit them only from the final, frozen run
+reports/eval/*
+!reports/eval/.gitkeep
+frontend/e2e/../test-results/

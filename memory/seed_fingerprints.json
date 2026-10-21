@@ -1,0 +1,222 @@
+[
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"xgboost\", \"params\": {\"n_estimators\": 120, \"max_depth\": 4}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "xgboost",
+  "test_score": 0.770513,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"lasso\", \"params\": {\"alpha\": 0.000171}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "lasso",
+  "test_score": 53.842132,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "380c9275f43fdaea",
+  "task_family": "clustering",
+  "vector": "[0.37507, 0.38204, 0.0, 0.0, 0.04538, 0.0, 0.0, 0.0, 0.08651, 0.03791, 0.30496, 0.14339]",
+  "pipeline_spec": "{\"model\": \"kmeans\", \"params\": {\"k\": 3}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": false, \"power\": false, \"scale\": true, \"high_card_encoding\": \"frequency\"}, \"balance\": null}",
+  "model": "kmeans",
+  "test_score": 0.284859,
+  "baseline_score": -0.016691,
+  "metric": "silhouette",
+  "target_type": null
+ },
+ {
+  "dataset_id": "29a86cac504338c7",
+  "task_family": "time_series",
+  "vector": "[0.34345, 0.10034, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.05]",
+  "pipeline_spec": "{\"model\": \"arima\", \"params\": {\"order\": [1, 1, 1]}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"frequency\"}, \"balance\": null}",
+  "model": "arima",
+  "test_score": 5.141641,
+  "baseline_score": 18.057444,
+  "metric": "smape",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"lightgbm\", \"params\": {\"n_estimators\": 120, \"num_leaves\": 31, \"min_child_samples\": 20}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "lightgbm",
+  "test_score": 0.78399,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"ridge\", \"params\": {\"alpha\": 3.0}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "ridge",
+  "test_score": 53.748444,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "380c9275f43fdaea",
+  "task_family": "clustering",
+  "vector": "[0.37507, 0.38204, 0.0, 0.0, 0.04538, 0.0, 0.0, 0.0, 0.08651, 0.03791, 0.30496, 0.14339]",
+  "pipeline_spec": "{\"model\": \"kmeans\", \"params\": {\"k\": 3}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": false, \"power\": false, \"scale\": true, \"high_card_encoding\": \"frequency\"}, \"balance\": null}",
+  "model": "kmeans",
+  "test_score": 0.284859,
+  "baseline_score": -0.016691,
+  "metric": "silhouette",
+  "target_type": null
+ },
+ {
+  "dataset_id": "29a86cac504338c7",
+  "task_family": "time_series",
+  "vector": "[0.34345, 0.10034, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.05]",
+  "pipeline_spec": "{\"model\": \"arima\", \"params\": {\"order\": [1, 1, 1]}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"frequency\"}, \"balance\": null}",
+  "model": "arima",
+  "test_score": 5.141641,
+  "baseline_score": 18.057444,
+  "metric": "smape",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"xgboost\", \"params\": {\"n_estimators\": 120, \"max_depth\": 4}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "xgboost",
+  "test_score": 0.770513,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"lasso\", \"params\": {\"alpha\": 0.000171}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "lasso",
+  "test_score": 53.842132,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "380c9275f43fdaea",
+  "task_family": "clustering",
+  "vector": "[0.37507, 0.38204, 0.0, 0.0, 0.04538, 0.0, 0.0, 0.0, 0.08651, 0.03791, 0.30496, 0.14339]",
+  "pipeline_spec": "{\"model\": \"kmeans\", \"params\": {\"k\": 3}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": false, \"power\": false, \"scale\": true, \"high_card_encoding\": \"frequency\"}, \"balance\": null}",
+  "model": "kmeans",
+  "test_score": 0.284859,
+  "baseline_score": -0.016691,
+  "metric": "silhouette",
+  "target_type": null
+ },
+ {
+  "dataset_id": "29a86cac504338c7",
+  "task_family": "time_series",
+  "vector": "[0.34345, 0.10034, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.05]",
+  "pipeline_spec": "{\"model\": \"arima\", \"params\": {\"order\": [1, 1, 1]}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"frequency\"}, \"balance\": null}",
+  "model": "arima",
+  "test_score": 5.141641,
+  "baseline_score": 18.057444,
+  "metric": "smape",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"lightgbm\", \"params\": {\"n_estimators\": 120, \"num_leaves\": 31, \"min_child_samples\": 20}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "lightgbm",
+  "test_score": 0.78399,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"lightgbm\", \"params\": {\"n_estimators\": 120, \"num_leaves\": 31, \"min_child_samples\": 20}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "lightgbm",
+  "test_score": 0.78399,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"xgboost\", \"params\": {\"n_estimators\": 120, \"max_depth\": 4}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "xgboost",
+  "test_score": 0.770513,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "8331e5a2532f5fdb",
+  "task_family": "classification",
+  "vector": "[0.47541, 0.31808, 0.375, 0.0244, 0.43821, 1.0, 0.0, 0.10315, 0.49153, 0.63504, 0.23379, 0.06877]",
+  "pipeline_spec": "{\"model\": \"xgboost\", \"params\": {\"n_estimators\": 120, \"max_depth\": 4}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": true, \"winsorize\": false, \"power\": false, \"scale\": false, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "xgboost",
+  "test_score": 0.770513,
+  "baseline_score": 0.380623,
+  "metric": "f1_macro",
+  "target_type": "binary"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"ridge\", \"params\": {\"alpha\": 3.0}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "ridge",
+  "test_score": 53.748444,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"ridge\", \"params\": {\"alpha\": 3.0}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "ridge",
+  "test_score": 53.748444,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"lasso\", \"params\": {\"alpha\": 0.01}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "lasso",
+  "test_score": 53.359864,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ },
+ {
+  "dataset_id": "861964c468642a32",
+  "task_family": "regression",
+  "vector": "[0.42463, 0.34713, 0.0, 0.0, 0.05666, 0.0, 1.0, 0.0, 0.09389, 0.02442, 0.3485, 0.69346]",
+  "pipeline_spec": "{\"model\": \"ridge\", \"params\": {\"alpha\": 3.0}, \"prep\": {\"impute_num\": \"median\", \"add_indicator\": false, \"winsorize\": true, \"power\": false, \"scale\": true, \"high_card_encoding\": \"target\"}, \"balance\": null}",
+  "model": "ridge",
+  "test_score": 53.748444,
+  "baseline_score": 73.222493,
+  "metric": "rmse",
+  "target_type": "continuous"
+ }
+]
