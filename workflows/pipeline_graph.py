@@ -193,16 +193,20 @@ class PipelineRun:
         self.s.profile = quick_profile(self.s.file_path, self.settings.max_profile_rows)
 
     def stage_route(self) -> None:
-        ans = self.answer("clarify")
+        ans = self.s.answers.get("clarify")
         if isinstance(ans, dict) and ans.get("rl_mismatch") == "decline":
             raise DataError("Stopped: the data does not fit offline RL. Upload logged-decision data "
                             "(an action column and a reward column) to run RL.")
-        out = RouterAgent(self.ctx).plan(self.s.problem_statement, self.s.profile, self.raw_df(),
-                                         answer=ans if isinstance(ans, dict) else None)
+        router = RouterAgent(self.ctx)
+        out = router.plan(self.s.problem_statement, self.s.profile, self.raw_df(), answer=ans if isinstance(ans, dict) else None)
         if isinstance(out, ClarifyingQuestion):
-            if not self.interactive and ans is None:
-                raise DataError(f"The router needs a clarification: {out.question}")
-            self.ask("clarification", "clarify", out.model_dump(), default=None)
+            auto = self.auto_answers.get("clarify")
+            if not self.interactive and auto:   # scripted runs (eval) answer only when the router actually asks
+                out = router.plan(self.s.problem_statement, self.s.profile, self.raw_df(), answer=auto)
+            if isinstance(out, ClarifyingQuestion):
+                if not self.interactive:
+                    raise DataError(f"The router needs a clarification: {out.question}")
+                self.ask("clarification", "clarify", out.model_dump(), default=None)
         self.s.task_plan = out
 
     def stage_audit(self) -> None:
