@@ -135,7 +135,9 @@ def report_stage(run: "PipelineRun") -> None:
     (out / "report.html").write_text(gen.html(sec, explain.get("plots", [])))
     for p in explain.get("plots", []):
         (out / "plots" / f"{p['id']}.json").write_text(json.dumps(p["figure"]))
-    png_note = _static_plots(explain.get("plots", []), out / "plots")
+    settings = get_settings()
+    png_note = (_static_plots(explain.get("plots", []), out / "plots") if settings.static_plots and not settings.fast
+                else "static PNG plots skipped (fast mode or STATIC_PLOTS=0); Plotly JSON is included")
     pdf_ok = _pdf(gen.html(sec, [], static=True), out / "report.pdf")
     # ---- code, model, ledger, transcript, card, manifest
     chosen = s.candidate(s.chosen_id)
@@ -152,7 +154,6 @@ def report_stage(run: "PipelineRun") -> None:
     (out / "model" / "model_card.md").write_text(xt.model_card(s, {}, explain.get("importance")))
     schema = _input_schema(run)
     (out / "model" / "input_schema.json").write_text(json.dumps(schema, indent=2))
-    settings = get_settings()
     files = sorted(p for p in out.rglob("*") if p.is_file() and p.name != "manifest.json")
     manifest = {"session_id": s.id, "created_at": now_iso(), "dataset_file": s.file_name,
                 "dataset_sha256": xt.sha256(Path(s.file_path)), "seed": s.seed,

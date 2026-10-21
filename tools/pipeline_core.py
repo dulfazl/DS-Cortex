@@ -316,10 +316,11 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
         m = {"greedy_ridge": "ridge", "greedy_rf": "random_forest", "greedy_gbm": "gradient_boosting"}.get(m, m)
         if m == "dummy":
             return DummyRegressor(strategy="mean")
-        if m == "ridge":
-            return Ridge(alpha=p.get("alpha", 1.0))
-        if m == "lasso":
-            return Lasso(alpha=p.get("alpha", 0.01), max_iter=20000)
+        if m in ("ridge", "lasso"):
+            # standardize the target so the penalty is scale-free (and Lasso converges on large targets)
+            from sklearn.compose import TransformedTargetRegressor
+            base = Ridge(alpha=p.get("alpha", 1.0)) if m == "ridge" else Lasso(alpha=p.get("alpha", 0.01), max_iter=20000)
+            return base if fam == "offline_rl" else TransformedTargetRegressor(regressor=base, transformer=StandardScaler())
         if m == "decision_tree":
             return DecisionTreeRegressor(max_depth=p.get("max_depth", 5), min_samples_leaf=p.get("min_samples_leaf", 10),
                                          random_state=seed)

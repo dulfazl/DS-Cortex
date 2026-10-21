@@ -39,6 +39,7 @@ class Settings:
     cv_repeats: int = 3
     fast: bool = False  # fewer repeats / tuning trials (eval harness, tests)
     blocker_policy: str = "ask"  # ask | drop | keep  (non-interactive runs use drop)
+    static_plots: bool = True    # PNG copies of plots in the bundle (needs Chrome for Kaleido)
     extra: dict = field(default_factory=dict)
 
     @property
@@ -74,6 +75,7 @@ def get_settings() -> Settings:
         cv_repeats=int(os.getenv("CV_REPEATS", "3")),
         fast=os.getenv("FAST_MODE", "0") == "1",
         blocker_policy=os.getenv("BLOCKER_POLICY", "ask"),
+        static_plots=os.getenv("STATIC_PLOTS", "1") == "1",
     )
     for d in (s.data_dir, s.log_dir, s.upload_dir, s.sessions_dir, s.db_path.parent):
         d.mkdir(parents=True, exist_ok=True)

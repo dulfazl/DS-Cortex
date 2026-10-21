@@ -367,19 +367,14 @@ class PipelineRun:
         """Client picks another pipeline: warn once (with numbers) if it should underperform, then
         proceed with the client's choice and log both."""
         rec_id = self.s.chosen_id
-        a, b = self.s.candidate(rec_id), self.s.candidate(choice)
-        if b is None:
+        if self.s.candidate(choice) is None:
             raise DataError(f"Unknown pipeline '{choice}'")
-        metric = self.plan.metric
-        gap = pc.oriented(metric, a.cv.primary_mean) - pc.oriented(metric, b.cv.primary_mean)
-        warning = None
         key = f"override:{choice}"
-        if gap > a.cv.primary_std and key not in self.s.warnings_given:
-            warning = (f"{choice} is expected to underperform: cross-validated {metric} {b.cv.primary_mean:.4f} "
-                       f"against {a.cv.primary_mean:.4f} for the recommended {rec_id} (gap {gap:.4f}, larger than one "
-                       f"standard deviation {a.cv.primary_std:.4f}). Proceeding with your choice.")
+        warning = None if key in self.s.warnings_given else override_warning(self.s, choice)
+        if warning:
             self.s.warnings_given.append(key)
             self.emit("warning", {"message": warning})
+        b = self.s.candidate(choice)
         ev = self.s.debate.recommendation.evidence
         self.ctx.ledger.add(Recommendation(agent="supervisor", decision_point="model_choice_override",
                                            recommendation=rec_id, rationale=warning or "client override within noise",
@@ -516,6 +511,21 @@ class PipelineRun:
     def stage_report(self) -> None:
         from workflows.report_graph import report_stage
         report_stage(self)
+
+
+def override_warning(s: Session, choice: str) -> str | None:
+    """The one warning a client gets when overriding: only if the stored CV scores say their choice
+    should underperform the recommendation by more than one standard deviation."""
+    a, b = s.candidate(s.chosen_id), s.candidate(choice)
+    if a is None or b is None or a.id == b.id:
+        return None
+    metric = s.task_plan.metric
+    gap = pc.oriented(metric, a.cv.primary_mean) - pc.oriented(metric, b.cv.primary_mean)
+    if gap <= a.cv.primary_std:
+        return None
+    return (f"{choice} is expected to underperform: cross-validated {metric} {b.cv.primary_mean:.4f} against "
+            f"{a.cv.primary_mean:.4f} for the recommended {a.id} (gap {gap:.4f}, larger than one standard deviation "
+            f"{a.cv.primary_std:.4f}). Proceeding with your choice.")
 
 
 def _clean_summary(run: PipelineRun, plan: list[dict]) -> dict:
