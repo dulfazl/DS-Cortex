@@ -54,3 +54,11 @@ class BaseAgent:
                              confidence_method=method, **kw)
         self.ctx.ledger.add(rec, options=options, chosen=chosen or recommendation, decided_by=decided_by, note=note)
         return rec
+
+
+def slice_evidence(ev: Evidence, key: str | None, value: Any = None) -> Evidence:
+    """Evidence for one column/item of a larger tool result. Same run_id, so the verifier still
+    checks it against the full logged result."""
+    if key is None:
+        return ev
+    return Evidence(tool=ev.tool, inputs={**ev.inputs, "item": key}, result={key: value}, run_id=ev.run_id)
