@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from tools import pipeline_core as pc
 from tools.common import jsonable
 
 SCORERS = {"f1_macro": "f1_macro", "roc_auc": "roc_auc", "pr_auc": "average_precision", "rmse": "neg_root_mean_squared_error",

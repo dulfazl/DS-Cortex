@@ -9,7 +9,7 @@ from agents.pipeline_critic.core import PipelineCriticAgent
 from app.llm import FakeLLM
 from app.schemas import CandidatePipeline, Check, Claim, CVScores, Evidence, TaskPlan
 from tools.tool_log import ToolLog
-from tools.verify_tools import verify_claim, verify_claims, numbers_supported
+from tools.verify_tools import numbers_supported, verify_claims
 from workflows.debate_graph import run_debate
 from workflows.resolution_table import DebateState, resolve
 

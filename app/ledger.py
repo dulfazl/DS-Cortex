@@ -3,7 +3,7 @@ to logs/ledger_<session>.jsonl."""
 from __future__ import annotations
 
 import json
-from typing import Callable
+from collections.abc import Callable
 
 from app import db
 from app.config import get_settings
@@ -71,7 +71,7 @@ def ledger_markdown(entries: list[LedgerEntry]) -> str:
                   f"- **Chosen:** {_md(e.chosen)}" + (f" (client chose {_md(e.client_choice)})" if e.client_choice else ""),
                   f"- **Agent:** {r.agent}",
                   f"- **Rationale:** {_md(r.rationale)}",
-                  f"- **Evidence:** " + ", ".join(f"`{ev.tool}` run {ev.run_id[:8]}" for ev in r.evidence)]
+                  "- **Evidence:** " + ", ".join(f"`{ev.tool}` run {ev.run_id[:8]}" for ev in r.evidence)]
         if e.note:
             lines.append(f"- **Note:** {_md(e.note)}")
         lines.append("")

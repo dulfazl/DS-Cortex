@@ -99,9 +99,8 @@ def test_test_set_guard_refuses_second_read(fixtures_dir):
 def test_evidence_trace_no_invented_numbers(fixtures_dir):
     """Every number in the report traces to a logged tool result (settings are allowed)."""
     s = _run(fixtures_dir, RunFlags(memory=False, tuning=False))
-    from tools.tool_log import ToolLog
     facts = set()
-    import sqlite3
+
     from app import db
     with db.connect() as c:
         for row in c.execute("SELECT result FROM tool_runs WHERE session_id=?", (s.id,)):

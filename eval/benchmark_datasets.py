@@ -5,11 +5,10 @@ from __future__ import annotations
 
 import io
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
-import numpy as np
 import pandas as pd
 
 from app.config import ROOT

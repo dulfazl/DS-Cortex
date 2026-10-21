@@ -80,7 +80,9 @@ def leakage_probe(spec: dict, df_train: pd.DataFrame, task: dict, seed: int, bas
     out["shuffled_above_baseline"] = bool(gain > margin and out["shuffled_retained_gain"] > 0.5)
     gain = pc.oriented(metric, cv_mean) - pc.oriented(metric, baseline_mean)
     out["near_perfect"] = bool(bounded_metric(metric) and metric not in ("silhouette", "r2") and cv_mean >= 0.99)
-    if top_feature and top_feature in df_train.columns and gain > 0:
+    fc = pc.feature_columns(df_train, task)
+    others = [c for c in fc["numeric"] + fc["categorical"] + fc["high_cardinality"] + fc["datetime"] if c != top_feature]
+    if top_feature and top_feature in df_train.columns and gain > 0 and others:
         dropped = pc.cv_evaluate(spec, df_train.drop(columns=[top_feature]), task, seed, folds=3, repeats=1)
         out["top_feature"] = top_feature
         out["without_top_mean"] = dropped["primary_mean"]

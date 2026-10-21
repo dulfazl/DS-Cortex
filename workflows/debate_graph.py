@@ -18,8 +18,7 @@ from agents.pipeline_critic.core import PipelineCriticAgent
 from agents.research.core import ResearchAgent
 from agents.statistician.core import StatisticianAgent, validity_issues
 from app.llm import ask_json, load_prompt
-from app.schemas import (CandidatePipeline, Check, Claim, DebatePosition, DebateTurn, Evidence,
-                         StatisticalProfile, TaskPlan)
+from app.schemas import CandidatePipeline, Check, Claim, DebatePosition, DebateTurn, Evidence, StatisticalProfile, TaskPlan
 from tools.verify_tools import verify_claims
 from workflows.resolution_table import DebateState, Decision, resolve
 

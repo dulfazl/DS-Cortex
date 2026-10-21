@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from app.ledger import Ledger
 from app.schemas import Evidence, EvidenceError, Recommendation, validate_recommendation
@@ -27,7 +28,7 @@ def test_llm_confidence_rejected_when_computed_available():
 
 
 def test_confidence_bounds():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         Recommendation(agent="a", decision_point="d", recommendation="r", rationale="", evidence=[_ev()],
                        confidence=1.5, confidence_method="rule")
 
@@ -39,7 +40,7 @@ def test_session_with_three_ledger_entries_reloads(tmp_path):
     log = ToolLog(s.id)
     ledger = Ledger(s.id)
     for i in range(3):
-        _, ev = log.run("pandas_tools.describe_csv", lambda: {"rows": 2, "i": i}, {"path": "x.csv"})
+        _, ev = log.run("pandas_tools.describe_csv", lambda i=i: {"rows": 2, "i": i}, {"path": "x.csv"})
         ledger.add(_rec([ev], point=f"point_{i}"), options=["a", "b"], chosen="a")
     reloaded = store.get(s.id)
     assert reloaded.mode == "review" and reloaded.problem_statement == "predict b"

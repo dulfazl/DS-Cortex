@@ -13,19 +13,24 @@ from fastapi import APIRouter, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
 
 from app import events
-from app.config import ROOT
+from app.config import get_settings
 
-REPLAY_DIR = ROOT / "reports" / "replays"
+
+def replay_dir() -> Path:
+    return get_settings().reports_dir / "replays"
+
+
 replay_api = APIRouter()
 
 
 def record(session_id: str, name: str, results: dict) -> Path:
-    REPLAY_DIR.mkdir(parents=True, exist_ok=True)
+    folder = replay_dir()
+    folder.mkdir(parents=True, exist_ok=True)
     evs = events.events_after(session_id, 0, limit=100000)
     t0 = datetime.fromisoformat(evs[0]["ts"]) if evs else None
     for e in evs:
         e["offset"] = (datetime.fromisoformat(e["ts"]) - t0).total_seconds() if t0 else 0
-    path = REPLAY_DIR / f"{name}.json"
+    path = folder / f"{name}.json"
     path.write_text(json.dumps({"name": name, "session_id": session_id, "events": evs, "results": results}))
     return path
 
@@ -33,7 +38,7 @@ def record(session_id: str, name: str, results: dict) -> Path:
 def _load(name: str) -> dict:
     if not re.fullmatch(r"[\w\-]{1,60}", name):
         raise HTTPException(404, "replay not found")
-    p = REPLAY_DIR / f"{name}.json"
+    p = replay_dir() / f"{name}.json"
     if not p.exists():
         raise HTTPException(404, "replay not found")
     return json.loads(p.read_text())
@@ -41,7 +46,8 @@ def _load(name: str) -> dict:
 
 @replay_api.get("/replays")
 def list_replays():
-    return [p.stem for p in sorted(REPLAY_DIR.glob("*.json"))] if REPLAY_DIR.exists() else []
+    folder = replay_dir()
+    return [p.stem for p in sorted(folder.glob("*.json"))] if folder.exists() else []
 
 
 @replay_api.get("/replays/{name}/results")

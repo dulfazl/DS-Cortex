@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pytest
 
 from agents.base import AgentContext
 from agents.data_auditor.core import DataAuditorAgent

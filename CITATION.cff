@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use DS Cortex, please cite it."
+title: "DS Cortex: Evidence-Grounded Deliberation for Multi-Agent Data Science"
+version: 1.0.0
+date-released: 2026-10-21
+license: MIT
+authors:
+  - name: "DS Cortex authors"

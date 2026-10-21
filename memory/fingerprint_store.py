@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from app import db
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     from workflows.pipeline_graph import PipelineRun
 
 DISTANCE_THRESHOLD = 0.35   # above this, a bad analogy is worse than no suggestion
+SEED_FILE = Path(__file__).resolve().parent / "seed_fingerprints.json"
 
 
 def dataset_id(path: str) -> str:
@@ -52,7 +54,7 @@ def find_similar(fingerprint: list[float], task_family: str, k: int = 3, thresho
     return jsonable({"matches": matches, "nearest_distance": nearest, "threshold": threshold, "searched": len(scored)})
 
 
-def lookup_for_run(run: "PipelineRun") -> None:
+def lookup_for_run(run: PipelineRun) -> None:
     s = run.s
     prof = s.stats_profile
     exclude = dataset_id(s.file_path) if s.flags.memory_exclude_same else None
@@ -82,12 +84,12 @@ def lookup_for_run(run: "PipelineRun") -> None:
                        options=["use as advice", "ignore"], chosen="advice only, never auto-applied")
 
 
-def log_memory_review(run: "PipelineRun") -> None:
+def log_memory_review(run: PipelineRun) -> None:
     mem = [c for c in run.s.candidates if c.origin == "memory"]
     run.s.memory["review"] = [{"id": c.id, "status": c.status, "objections": [o.message for o in c.objections]} for c in mem]
 
 
-def record_outcome(run: "PipelineRun") -> dict:
+def record_outcome(run: PipelineRun) -> dict:
     """At the end of a completed run: did memory help? Then store this run's fingerprint."""
     s = run.s
     sugg = s.memory.get("suggestions") or []
@@ -123,3 +125,26 @@ def memory_stats() -> dict[str, Any]:
     return {"runs_logged": len(rows), "with_suggestion": sum(1 for r in rows if r["suggested"]),
             "entered": sum(r["entered"] for r in rows), "won": sum(r["won"] for r in rows),
             "rejected": sum(r["rejected"] for r in rows), "fingerprints_stored": n}
+
+
+def export_seed(path: Path = SEED_FILE) -> int:
+    """Write the stored fingerprints and pipelines (never raw data) to a JSON file for seeding."""
+    with db.connect() as c:
+        rows = [dict(r) for r in c.execute("SELECT dataset_id, task_family, vector, pipeline_spec, model, test_score, "
+                                           "baseline_score, metric, target_type FROM fingerprints").fetchall()]
+    path.write_text(json.dumps(rows, indent=1))
+    return len(rows)
+
+
+def load_seed(path: Path = SEED_FILE) -> int:
+    """Fill an empty store from the committed seed file, so the memory demo survives a disk reset."""
+    if not path.exists():
+        return 0
+    with db.connect() as c:
+        if c.execute("SELECT COUNT(*) AS n FROM fingerprints").fetchone()["n"]:
+            return 0
+    rows = json.loads(path.read_text())
+    for r in rows:
+        save(r["dataset_id"], r["task_family"], json.loads(r["vector"]), json.loads(r["pipeline_spec"]), r["model"],
+             r["test_score"], r["baseline_score"], r["metric"], "seed", r.get("target_type"), seeded=True)
+    return len(rows)

@@ -3,8 +3,8 @@ Each rule takes the debate state and returns a decision plus the rule name. The 
 a decision; it may not make it."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from agents.statistician.core import validity_issues
 from app.schemas import CandidatePipeline, DebatePosition, TaskPlan

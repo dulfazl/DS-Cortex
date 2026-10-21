@@ -1,8 +1,6 @@
 """Phase 10 checkpoint: a similar dataset gets the suggestion (as a candidate, shown as advice);
 a mismatched suggestion is rejected by the Critic and the rejection is logged."""
-import json
 
-import numpy as np
 import pandas as pd
 
 from app.ledger import Ledger

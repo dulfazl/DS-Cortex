@@ -71,6 +71,7 @@ def _plots(flaws, runs, out: Path) -> None:
 
 def report(out: Path, seeds_requested: int | None = None) -> dict:
     import pandas as pd
+
     from eval import calibration_check, stats
     from eval.benchmark_datasets import describe_suite
     runs = pd.read_json(out / "runs.jsonl", lines=True) if (out / "runs.jsonl").exists() else pd.DataFrame()

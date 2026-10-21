@@ -5,8 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from agents.base import BaseAgent, cv_claim, slice_evidence
-from app.schemas import (DataAuditReport, DebatePosition, Evidence, FeatureProfile, StatFlag,
-                         StatisticalProfile, TaskPlan)
+from app.schemas import DataAuditReport, DebatePosition, Evidence, FeatureProfile, StatFlag, StatisticalProfile, TaskPlan
 from tools import fingerprint_tools as ft
 from tools import stats_tools as stt
 from tools.common import clip01

@@ -144,7 +144,7 @@ def test_leakage_blocker_pauses_run(client, fixtures_dir, tmp_path):
     client.post(f"/sessions/{sid}/start", json={"flags": FAST})
     s = _wait(client, sid)
     assert s["status"] == "blocked" and s["pending"]["payload"]["blockers"] == ["outcome_flag"]
-    from app.events import events_after   # the stream stays open while paused, so read the log directly
+    from app.events import events_after  # the stream stays open while paused, so read the log directly
     blocker_events = [e for e in events_after(sid) if e["type"] == "blocker"]
     assert blocker_events
     r = client.post(f"/sessions/{sid}/approve", json={"blockers": {"outcome_flag": {"decision": "keep"}}})

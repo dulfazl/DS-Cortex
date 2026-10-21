@@ -1,0 +1,22 @@
+[project]
+name = "ds-cortex"
+version = "1.0.0"
+description = "Deliberative, evidence-grounded multi-agent data science"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: long-running tests (nightly)"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning", "ignore::FutureWarning"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+extend-exclude = ["frontend", "reports", "datasets", "logs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008", "UP007", "B905", "E731"]
+
+[tool.coverage.run]
+source = ["tools", "workflows", "agents", "app"]

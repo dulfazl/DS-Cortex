@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field
 
 from app import db
 from app.config import get_settings
-from app.schemas import (CandidatePipeline, DataAuditReport, DebateOutcome, StatisticalProfile,
-                         TaskPlan)
+from app.schemas import CandidatePipeline, DataAuditReport, DebateOutcome, StatisticalProfile, TaskPlan
 from tools.common import now_iso
 
 RunMode = Literal["autopilot", "review"]

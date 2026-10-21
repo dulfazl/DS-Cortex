@@ -8,8 +8,7 @@ import copy
 import pandas as pd
 
 from agents.base import BaseAgent, cv_claim
-from app.schemas import (CandidatePipeline, Check, Claim, CVScores, DebatePosition, Objection,
-                         StatisticalProfile, TaskPlan)
+from app.schemas import CandidatePipeline, Check, Claim, CVScores, DebatePosition, Objection, StatisticalProfile, TaskPlan
 from tools import pipeline_core as pc
 from tools import sklearn_tools as sk
 

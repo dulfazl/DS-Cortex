@@ -58,7 +58,7 @@ def make_variants(name: str, df: pd.DataFrame, target: str, family: str, seed: i
         d = df.copy()
         idx = rng.choice(len(d), int(0.1 * len(d)), replace=False)
         labels = d[target].dropna().unique()
-        d.loc[idx, target] = [rng.choice([l for l in labels if l != v]) if len(labels) > 1 else v for v in d.loc[idx, target]]
+        d.loc[idx, target] = [rng.choice([lab for lab in labels if lab != v]) if len(labels) > 1 else v for v in d.loc[idx, target]]
         out.append(Variant(name, "label_noise", d, target, detail="10% of labels flipped"))
     # 4 missing-not-at-random values in a key feature: the top values go missing
     key = _key_feature(df, target)

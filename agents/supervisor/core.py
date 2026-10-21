@@ -7,8 +7,7 @@ import pandas as pd
 from agents.base import BaseAgent
 from agents.ml_architect.core import MLArchitectAgent
 from app.llm import narrate
-from app.schemas import (CandidatePipeline, DebateOutcome, DebateTurn, Recommendation, StatisticalProfile,
-                         TaskPlan)
+from app.schemas import CandidatePipeline, DebateOutcome, DebateTurn, Recommendation, StatisticalProfile, TaskPlan
 from tools import sklearn_tools as sk
 from workflows.debate_graph import run_debate
 

@@ -15,15 +15,30 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, TransformerMixin, clone
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import (average_precision_score, davies_bouldin_score, f1_score, mean_absolute_error,
-                             mean_squared_error, precision_recall_curve, r2_score, roc_auc_score,
-                             silhouette_score)
-from sklearn.model_selection import (GroupKFold, GroupShuffleSplit, KFold, RepeatedKFold,
-                                     RepeatedStratifiedKFold, StratifiedKFold, TimeSeriesSplit,
-                                     train_test_split)
+from sklearn.metrics import (
+    average_precision_score,
+    davies_bouldin_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_recall_curve,
+    r2_score,
+    roc_auc_score,
+    silhouette_score,
+)
+from sklearn.model_selection import (
+    GroupKFold,
+    GroupShuffleSplit,
+    KFold,
+    RepeatedKFold,
+    RepeatedStratifiedKFold,
+    StratifiedKFold,
+    TimeSeriesSplit,
+    train_test_split,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, PowerTransformer, StandardScaler
 
@@ -552,7 +567,7 @@ def ts_forecast(spec: dict, y_train: np.ndarray, h: int, m: int, seed: int) -> t
                                             learning_rate=0.05, random_state=seed).fit(np.array(Xs), np.array(ys))
         resid = np.array(ys) - reg.predict(np.array(Xs))
         hist, level, fc = list(d), y_train[-1], []
-        for step in range(h):
+        for _ in range(h):
             t = len(hist)
             x = np.r_[np.array(hist[-L:])[::-1], (t + 1) % max(m, 1)]
             dd = float(reg.predict(x.reshape(1, -1))[0])

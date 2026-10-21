@@ -10,8 +10,9 @@ import hashlib
 import json
 import re
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from app import db
 from app.config import get_settings

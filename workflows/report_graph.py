@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import joblib
-import numpy as np
 
 from agents.business.core import BusinessInsightAgent
 from agents.explainability.core import ExplainabilityAgent
@@ -27,7 +26,7 @@ if TYPE_CHECKING:
     from workflows.pipeline_graph import PipelineRun
 
 
-def _fit(run: "PipelineRun") -> dict:
+def _fit(run: PipelineRun) -> dict:
     """The fitted final pipeline and its test predictions (refit from the saved model if resuming)."""
     if "fit" in run._df_cache:
         return run._df_cache["fit"]
@@ -51,7 +50,7 @@ def _fit(run: "PipelineRun") -> dict:
     return out
 
 
-def explain_stage(run: "PipelineRun") -> None:
+def explain_stage(run: PipelineRun) -> None:
     s, ctx, task = run.s, run.ctx, run.s.task_plan.model_dump()
     fam = task["task_family"]
     fit = _fit(run)
@@ -120,7 +119,7 @@ def load_explain(s) -> dict:
     return json.loads(p.read_text()) if p.exists() else {}
 
 
-def report_stage(run: "PipelineRun") -> None:
+def report_stage(run: PipelineRun) -> None:
     s, ctx = run.s, run.ctx
     explain = load_explain(s)
     gen = ReportGeneratorAgent(ctx)
@@ -194,7 +193,7 @@ def _pdf(html_text: str, path) -> bool:
         return False
 
 
-def _save_model(run: "PipelineRun", folder) -> str | None:
+def _save_model(run: PipelineRun, folder) -> str | None:
     fit = _fit(run)
     model = fit.get("model")
     if model is None:
@@ -209,7 +208,7 @@ def _save_model(run: "PipelineRun", folder) -> str | None:
                 "unpickling can run code")
 
 
-def _input_schema(run: "PipelineRun") -> dict:
+def _input_schema(run: PipelineRun) -> dict:
     df, task = run.clean_df(), run.s.task_plan.model_dump()
     cols = pc.feature_columns(df, task)
     out = {"target": task.get("target"), "columns": {}}

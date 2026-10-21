@@ -129,8 +129,8 @@ def _task_for(b: Benchmark) -> dict:
         return _TASK_CACHE[b.name]
     from agents.base import AgentContext
     from agents.router.core import RouterAgent
-    from tools.pandas_tools import coerce_types, quick_profile
     from eval.benchmark_datasets import CACHE
+    from tools.pandas_tools import coerce_types, quick_profile
     path = materialize(b, CACHE.parent / "materialized")
     df = coerce_types(pd.read_csv(path))
     plan = RouterAgent(AgentContext.offline()).plan(b.statement, quick_profile(path), df, answer=_answers(b)["clarify"])
@@ -174,7 +174,6 @@ def run_flaws(suite: list[Benchmark], configs: list[str], seeds: list[int], out:
                         drift = None
                         if s.status == "completed" and (flaw in ("covariate_shift", "clean")):
                             batch = v.new_batch if v else clean.sample(frac=0.3, random_state=seed + 1)
-                            col = v.column if v else None
                             ref = pd.read_pickle(s.dir / "clean.pkl")
                             drift = dc.drift_check(ref, batch[[c for c in batch.columns if c in ref.columns]], [b.target])
                         if v:

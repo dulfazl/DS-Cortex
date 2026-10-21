@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from app.schemas import Check, Claim
 from tools.tool_log import ToolLog, lookup
@@ -104,7 +105,7 @@ def flatten_numbers(obj: Any, out: set[float] | None = None) -> set[float]:
         for tok in extract_numbers(obj):
             out.add(_to_float(tok)[0])
     elif isinstance(obj, dict):
-        for k, v in obj.items():
+        for v in obj.values():
             flatten_numbers(v, out)
     elif isinstance(obj, (list, tuple, set)):
         for v in obj:

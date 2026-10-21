@@ -112,7 +112,6 @@ def _parse_ratio_datetime(s: pd.Series) -> float:
 
 def infer_kind(s: pd.Series) -> dict:
     """Return the semantic kind of a column plus the facts behind the decision."""
-    n = len(s)
     non_null = s.dropna()
     nunique = int(non_null.nunique())
     unique_ratio = nunique / max(1, len(non_null))

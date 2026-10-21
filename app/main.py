@@ -9,7 +9,7 @@ import shutil
 import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,7 +37,7 @@ def recover() -> None:
 
 def purge_old() -> int:
     s = get_settings()
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=s.data_retention_hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=s.data_retention_hours)
     n = 0
     for row in store.list():
         try:
@@ -66,6 +66,8 @@ def _retention_loop() -> None:
 async def lifespan(app: FastAPI):
     db.init_db()
     recover()
+    from memory.fingerprint_store import load_seed
+    load_seed()
     threading.Thread(target=_retention_loop, daemon=True, name="retention").start()
     yield
 

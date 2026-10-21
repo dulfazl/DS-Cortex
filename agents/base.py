@@ -1,8 +1,9 @@
 """Shared plumbing for agents: the context they run in (tool log, ledger, LLM, event emitter)."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from app.ledger import Ledger
 from app.llm import BaseLLM, OfflineLLM
@@ -29,7 +30,7 @@ class AgentContext:
         return self.log.run(name, fn, inputs, *args, **kwargs)
 
     @classmethod
-    def offline(cls, session_id: str = "test", persist: bool = False, **kw) -> "AgentContext":
+    def offline(cls, session_id: str = "test", persist: bool = False, **kw) -> AgentContext:
         """A throwaway context for scripts and tests."""
         return cls(session_id=session_id, log=ToolLog(session_id, persist=persist), ledger=Ledger(session_id), **kw)
 

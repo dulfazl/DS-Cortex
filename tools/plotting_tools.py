@@ -111,7 +111,7 @@ def clustering_plots(prof: dict) -> list[dict]:
     pca = prof["pca"]
     f = go.Figure(go.Scatter(x=pca["x"], y=pca["y"], mode="markers",
                              marker=dict(color=pca["label"], colorscale="Viridis", size=6, opacity=0.7),
-                             text=[f"cluster {l}" for l in pca["label"]]))
+                             text=[f"cluster {lab}" for lab in pca["label"]]))
     f.update_xaxes(title="PC 1")
     f.update_yaxes(title="PC 2")
     plots.append(_plot("cluster_projection", "Clusters in a 2D PCA projection", "model", 0.85, f,

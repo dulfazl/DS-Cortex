@@ -1,0 +1,24 @@
+name: nightly
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  live-and-repro:
+    runs-on: ubuntu-latest
+    env:
+      FAST_MODE: "1"
+      CV_REPEATS: "1"
+      STATIC_PLOTS: "0"
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y libgomp1
+      - run: pip install -r requirements-dev.txt
+      # one small real Gemini run (skipped when the secret is not set) and the export reproduction test
+      - run: pytest -q tests/live tests/workflow/test_end_to_end.py

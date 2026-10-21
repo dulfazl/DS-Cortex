@@ -5,7 +5,6 @@ from agents.base import AgentContext
 from agents.ml_architect.core import MLArchitectAgent
 from agents.pipeline_critic.core import PipelineCriticAgent
 from app.schemas import TaskPlan
-from tools import pipeline_core as pc
 from tools.pandas_tools import coerce_types, load_csv
 from workflows.modelling import critic_loop
 
