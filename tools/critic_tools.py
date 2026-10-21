@@ -64,19 +64,22 @@ def leakage_probe(spec: dict, df_train: pd.DataFrame, task: dict, seed: int, bas
     shuffled[task["target"]] = rng.permutation(shuffled[task["target"]].values)
     sh = pc.cv_evaluate(spec, shuffled, task, seed, folds=3, repeats=1)
     out["shuffled_mean"] = sh["primary_mean"]
-    margin = 0.05 if bounded_metric(metric) else 0.1
-    out["shuffle_margin"] = margin
-    out["shuffled_above_baseline"] = bool(_drop(metric, sh["primary_mean"], baseline_mean) > margin)
     gain = pc.oriented(metric, cv_mean) - pc.oriented(metric, baseline_mean)
+    # With a shuffled target the model should lose (almost) all of its gain over the baseline. Keeping more
+    # than half of it means it learns from structure that is not the target (duplicates, ids, group overlap).
+    out["shuffled_retained_gain"] = float((pc.oriented(metric, sh["primary_mean"]) - pc.oriented(metric, baseline_mean))
+                                          / gain) if gain > 0 else 0.0
+    out["shuffled_above_baseline"] = bool(gain > 0 and out["shuffled_retained_gain"] > 0.5)
+    out["near_perfect"] = bool(bounded_metric(metric) and metric not in ("silhouette", "r2") and cv_mean >= 0.99)
     if top_feature and top_feature in df_train.columns and gain > 0:
         dropped = pc.cv_evaluate(spec, df_train.drop(columns=[top_feature]), task, seed, folds=3, repeats=1)
         out["top_feature"] = top_feature
         out["without_top_mean"] = dropped["primary_mean"]
         out["share_of_gain_from_top"] = float((pc.oriented(metric, cv_mean) - pc.oriented(metric, dropped["primary_mean"])) / gain)
-        out["collapse"] = bool(out["share_of_gain_from_top"] > 0.8)
+        out["collapse"] = bool(out["share_of_gain_from_top"] > 0.8 or (out["near_perfect"] and out["share_of_gain_from_top"] > 0.5))
     else:
         out["collapse"] = False
-    out["leak_suspected"] = bool(out["shuffled_above_baseline"] or out["collapse"])
+    out["leak_suspected"] = bool(out["shuffled_above_baseline"] or out["collapse"] or out["near_perfect"])
     out["applicable"] = True
     return jsonable(out)
 

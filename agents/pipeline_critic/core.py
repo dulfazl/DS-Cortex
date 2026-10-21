@@ -45,8 +45,13 @@ class PipelineCriticAgent(BaseAgent):
                              spec, df_train, task, seed, baseline_mean, cv["primary_mean"], top_feature)
                 if r.get("shuffled_above_baseline"):
                     obj("leakage_probe", "blocker",
-                        f"with a shuffled target the score stays at {r['shuffled_mean']:.3f} (baseline {baseline_mean:.3f}): "
-                        "the pipeline learns something that is not the target", ev, "shuffled_above_baseline", "true")
+                        f"with a shuffled target the score stays at {r['shuffled_mean']:.3f} (baseline {baseline_mean:.3f}), "
+                        f"keeping {r['shuffled_retained_gain']:.0%} of the gain: the pipeline learns something that is "
+                        "not the target", ev, "shuffled_above_baseline", "true")
+                elif r.get("near_perfect") and not r.get("collapse"):
+                    obj("leakage_probe", "high",
+                        f"near-perfect cross-validated score ({cv['primary_mean']:.3f}): verify no feature leaks the target",
+                        ev, "near_perfect", "true")
                 if r.get("collapse"):
                     obj("leakage_probe", "high",
                         f"dropping '{r['top_feature']}' removes {r['share_of_gain_from_top']:.0%} of the gain over baseline: "
