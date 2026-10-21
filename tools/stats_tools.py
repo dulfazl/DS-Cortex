@@ -242,7 +242,8 @@ def label_noise_report(df: pd.DataFrame, target: str, seed: int = 0) -> dict:
     other = proba.copy()
     other[np.arange(len(y)), y] = -1
     best_other = other.argmax(axis=1)
-    suspect = (other[np.arange(len(y)), best_other] >= thresholds[best_other]) & (other[np.arange(len(y)), best_other] > given)
+    conf_other = other[np.arange(len(y)), best_other]
+    suspect = (conf_other >= np.maximum(thresholds[best_other], 0.8)) & (conf_other > given)
     return jsonable({"estimated_noise_rate": float(suspect.mean()), "suspect_count": int(suspect.sum()),
                      "suspect_rows": np.where(suspect)[0][:50].tolist(), "class_thresholds": thresholds.tolist(),
                      "method": "out-of-fold gradient boosting, per-class confidence thresholds"})

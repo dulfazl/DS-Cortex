@@ -82,7 +82,8 @@ class DataAuditorAgent(BaseAgent):
             if mech == "MAR-like" and assoc.get("strongest_with"):
                 why += f" (missingness tracks '{assoc['strongest_with']}', effect {assoc['effect']:.2f})"
             if mech == "possibly MNAR":
-                why += f" (rows with missing values differ on the column's predicted value, d = {r['self_effect_d']:.2f})"
+                why += (f" (rows with a missing value are predicted to sit in the {r['tail']} tail, d = {r['self_effect_d']:.2f}; "
+                        "this cannot be confirmed from the data)")
             action = "impute inside the CV pipeline" + (" and add a missing indicator" if mech != "MCAR-like" else "")
             add(col, "missing_values", sev, action, why, r["confidence"], "effect_size", ev, r,
                 CleaningAction(action="impute", column=col, stage="pipeline",

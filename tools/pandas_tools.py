@@ -146,10 +146,10 @@ def infer_kind(s: pd.Series) -> dict:
         return {**info, "kind": "datetime", "stored_as_text": "datetime"}
     avg_len = float(str_vals.str.len().mean())
     avg_words = float(str_vals.str.split().str.len().mean())
-    if unique_ratio > 0.95 and len(non_null) >= 20 and avg_words < 3:
-        return {**info, "kind": "id_like"}
     if avg_len > 40 and avg_words > 5:
         return {**info, "kind": "text"}
+    if unique_ratio > 0.95 and len(non_null) >= 20:
+        return {**info, "kind": "id_like"}   # codes, names, ticket numbers: identifiers, not features
     return {**info, "kind": "categorical"}
 
 
@@ -288,7 +288,7 @@ def missing_report(df: pd.DataFrame, target: str | None = None) -> dict:
             adj_p = min(1.0, best_p * max(1, tests))
             rec["associations"] = {"strongest_with": best_with, "p_adjusted": adj_p, "effect": round(best_eff, 4), "tests": tests}
             # MNAR hint: do rows with a missing value look different on what the column itself would be?
-            self_d = None
+            self_d, tail = None, None
             num_others = [c for c in _usable_numeric(df, {col, target} if target else {col}) if df[c].notna().mean() > 0.8]
             if pd.api.types.is_numeric_dtype(df[col]) and num_others and (n - k) > 30 and k >= 5:
                 from sklearn.linear_model import LinearRegression
@@ -300,16 +300,24 @@ def missing_report(df: pd.DataFrame, target: str | None = None) -> dict:
                     a, b = pred[miss.values], pred[~miss.values]
                     pooled = np.sqrt((a.var() + b.var()) / 2) or 1.0
                     self_d = float(abs(a.mean() - b.mean()) / pooled)
+                    obs = df.loc[~miss, col]
+                    if np.median(a) > obs.quantile(0.75):
+                        tail = "upper"
+                    elif np.median(a) < obs.quantile(0.25):
+                        tail = "lower"
             rec["self_effect_d"] = self_d
-            if self_d is not None and self_d >= 0.5:
+            rec["tail"] = tail
+            # MNAR cannot be tested from observed data. "possibly MNAR" only when the rows with a missing value
+            # are predicted to sit in one tail of the column (e.g. high incomes left blank); confidence stays modest.
+            if self_d is not None and self_d >= 0.8 and tail:
                 rec["mechanism"] = "possibly MNAR"
-                rec["confidence"] = round(min(1.0, 0.5 + 0.5 * min(1.0, (self_d - 0.5) / 1.0)), 3)
+                rec["confidence"] = round(min(0.75, 0.5 + 0.25 * min(1.0, (self_d - 0.8) / 1.0)), 3)
             elif adj_p < 0.01 and best_eff >= 0.1:
                 rec["mechanism"] = "MAR-like"
-                rec["confidence"] = round(min(1.0, 0.5 + best_eff), 3)
+                rec["confidence"] = round(min(0.95, 0.5 + best_eff), 3)
             else:
                 rec["mechanism"] = "MCAR-like"
-                rec["confidence"] = round(0.5 + 0.5 * min(1.0, adj_p), 3)
+                rec["confidence"] = round(0.5 + 0.3 * min(1.0, adj_p), 3)
         else:
             rec["mechanism"] = "entirely missing"
             rec["confidence"] = 1.0
