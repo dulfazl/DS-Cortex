@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import pandas as pd
 
-from agents.base import BaseAgent, slice_evidence
-from app.schemas import (DataAuditReport, Evidence, FeatureProfile, StatFlag, StatisticalProfile,
-                         TaskPlan)
+from agents.base import BaseAgent, cv_claim, slice_evidence
+from app.schemas import (DataAuditReport, DebatePosition, Evidence, FeatureProfile, StatFlag,
+                         StatisticalProfile, TaskPlan)
 from tools import fingerprint_tools as ft
 from tools import stats_tools as stt
 from tools.common import clip01
+
+VALIDITY_CHECKS = {"overfit_check", "seed_stability", "subgroup_check", "leakage_probe", "baseline_check"}
+SEVERITY_WEIGHT = {"medium": 0.7, "high": 0.85, "blocker": 0.95}
+
+
+def validity_issues(cand) -> list:
+    return [o for o in cand.objections if not o.resolved and o.check in VALIDITY_CHECKS and o.severity in SEVERITY_WEIGHT]
 
 
 class StatisticianAgent(BaseAgent):
@@ -151,3 +158,27 @@ class StatisticianAgent(BaseAgent):
                     evs, conf, "effect_size" if flags else "rule", options=["guidance"], chosen="guidance issued")
         self.finished(f"{len(flags)} flags, fingerprint computed")
         return profile
+
+    def position(self, survivors, plan, round_no: int = 0):
+        """Prefer the best-scoring candidate with no unresolved validity issue."""
+        from agents.ml_architect.core import MLArchitectAgent  # local import avoids a cycle
+        ranked = MLArchitectAgent.rank(survivors, plan.metric)
+        clean = [c for c in ranked if not validity_issues(c)]
+        if clean:
+            pref = clean[0]
+        else:
+            pref = min(ranked, key=lambda c: max(SEVERITY_WEIGHT[o.severity] for o in validity_issues(c)))
+        top = ranked[0]
+        reasons = []
+        if pref.id != top.id:
+            for o in validity_issues(top):
+                reasons.append(o.claim.model_copy(deep=True))
+            conf = max(SEVERITY_WEIGHT[o.severity] for o in validity_issues(top))
+        else:
+            conf = 0.6
+        c = cv_claim(self.ctx.log, pref, f"{pref.id} passes the validity checks and scores {pref.cv.primary_mean:.4f} "
+                                            f"{pref.cv.primary}" if not validity_issues(pref) else None)
+        if c:
+            reasons.append(c)
+        return DebatePosition(agent=self.name, preferred=pref.id, reasons=reasons, confidence=conf,
+                              confidence_method="rule", round=round_no)

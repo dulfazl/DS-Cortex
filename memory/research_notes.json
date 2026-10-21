@@ -1,0 +1,461 @@
+{
+ "note": "Short summaries written for DS Cortex (not abstracts). Context, not a literature review: verify before citing.",
+ "notes": [
+  {
+   "id": "breiman2001rf",
+   "title": "Random Forests",
+   "cite": "Breiman, 2001",
+   "summary": "Averages many decorrelated trees grown on bootstrap samples with random feature subsets; a strong, low-tuning default for tabular classification and regression.",
+   "tags": "tabular classification regression ensemble trees default robust",
+   "practice": "rf_default"
+  },
+  {
+   "id": "friedman2001gbm",
+   "title": "Greedy Function Approximation: A Gradient Boosting Machine",
+   "cite": "Friedman, 2001",
+   "summary": "Builds an additive model stage by stage, each tree fitted to the gradient of the loss; the basis of modern boosted trees.",
+   "tags": "tabular boosting trees classification regression",
+   "practice": "gbm_tabular"
+  },
+  {
+   "id": "chen2016xgboost",
+   "title": "XGBoost: A Scalable Tree Boosting System",
+   "cite": "Chen and Guestrin, 2016",
+   "summary": "Regularized, sparsity-aware gradient boosting with efficient split finding; widely used on structured data.",
+   "tags": "tabular boosting xgboost classification regression",
+   "practice": "gbm_tabular"
+  },
+  {
+   "id": "ke2017lightgbm",
+   "title": "LightGBM: A Highly Efficient Gradient Boosting Decision Tree",
+   "cite": "Ke et al., 2017",
+   "summary": "Leaf-wise histogram boosting with sampling tricks for speed on large tabular data.",
+   "tags": "tabular boosting lightgbm large data speed",
+   "practice": "gbm_tabular"
+  },
+  {
+   "id": "grinsztajn2022tabular",
+   "title": "Why do tree-based models still outperform deep learning on typical tabular data?",
+   "cite": "Grinsztajn, Oyallon and Varoquaux, 2022",
+   "summary": "Benchmark showing tree ensembles remain the strongest choice on medium-sized tabular datasets, partly because of uninformative features and irregular target functions.",
+   "tags": "tabular trees deep learning benchmark medium data",
+   "practice": "gbm_tabular"
+  },
+  {
+   "id": "shwartzziv2022tabular",
+   "title": "Tabular Data: Deep Learning is Not All You Need",
+   "cite": "Shwartz-Ziv and Armon, 2022",
+   "summary": "Compares deep tabular models with XGBoost and finds boosting usually equal or better with less tuning.",
+   "tags": "tabular deep learning xgboost comparison",
+   "practice": "gbm_tabular"
+  },
+  {
+   "id": "hoerl1970ridge",
+   "title": "Ridge Regression: Biased Estimation for Nonorthogonal Problems",
+   "cite": "Hoerl and Kennard, 1970",
+   "summary": "Adds an L2 penalty that trades a little bias for much lower variance when predictors are highly correlated.",
+   "tags": "multicollinearity regularization ridge linear high vif",
+   "practice": "regularized_linear"
+  },
+  {
+   "id": "tibshirani1996lasso",
+   "title": "Regression Shrinkage and Selection via the Lasso",
+   "cite": "Tibshirani, 1996",
+   "summary": "An L1 penalty shrinks coefficients and sets some exactly to zero, giving sparse, interpretable linear models.",
+   "tags": "lasso feature selection sparse linear regularization",
+   "practice": "regularized_linear"
+  },
+  {
+   "id": "zou2005elasticnet",
+   "title": "Regularization and Variable Selection via the Elastic Net",
+   "cite": "Zou and Hastie, 2005",
+   "summary": "Mixes L1 and L2 penalties so groups of correlated predictors are kept or dropped together.",
+   "tags": "elastic net correlated features regularization linear",
+   "practice": "regularized_linear"
+  },
+  {
+   "id": "schoelkopf2001ocsvm",
+   "title": "Estimating the Support of a High-Dimensional Distribution",
+   "cite": "Schoelkopf et al., 2001",
+   "summary": "Introduces the one-class SVM, which learns a boundary around normal data for novelty detection.",
+   "tags": "anomaly novelty one-class svm kernel",
+   "practice": "anomaly_methods"
+  },
+  {
+   "id": "liu2008iforest",
+   "title": "Isolation Forest",
+   "cite": "Liu, Ting and Zhou, 2008",
+   "summary": "Anomalies are isolated in fewer random splits; scales linearly and needs no distance metric.",
+   "tags": "anomaly isolation forest outlier scalable",
+   "practice": "iforest_default"
+  },
+  {
+   "id": "breunig2000lof",
+   "title": "LOF: Identifying Density-Based Local Outliers",
+   "cite": "Breunig et al., 2000",
+   "summary": "Scores each point by how isolated it is relative to the density of its neighbours.",
+   "tags": "anomaly local outlier factor density",
+   "practice": "anomaly_methods"
+  },
+  {
+   "id": "ester1996dbscan",
+   "title": "A Density-Based Algorithm for Discovering Clusters in Large Spatial Databases with Noise",
+   "cite": "Ester et al., 1996",
+   "summary": "DBSCAN groups dense regions, finds arbitrary shapes and labels sparse points as noise.",
+   "tags": "clustering density dbscan noise shapes",
+   "practice": "clustering_methods"
+  },
+  {
+   "id": "arthur2007kmeanspp",
+   "title": "k-means++: The Advantages of Careful Seeding",
+   "cite": "Arthur and Vassilvitskii, 2007",
+   "summary": "Spreads initial centroids out, giving faster convergence and better k-means solutions in expectation.",
+   "tags": "clustering kmeans initialization",
+   "practice": "kmeans_default"
+  },
+  {
+   "id": "rousseeuw1987silhouette",
+   "title": "Silhouettes: A Graphical Aid to the Interpretation and Validation of Cluster Analysis",
+   "cite": "Rousseeuw, 1987",
+   "summary": "Defines the silhouette width comparing within-cluster cohesion with separation from the nearest other cluster.",
+   "tags": "clustering validation silhouette internal metric",
+   "practice": "clustering_eval"
+  },
+  {
+   "id": "davies1979db",
+   "title": "A Cluster Separation Measure",
+   "cite": "Davies and Bouldin, 1979",
+   "summary": "Ratio of within-cluster scatter to between-cluster separation; lower values mean better separated clusters.",
+   "tags": "clustering validation davies bouldin",
+   "practice": "clustering_eval"
+  },
+  {
+   "id": "schwarz1978bic",
+   "title": "Estimating the Dimension of a Model",
+   "cite": "Schwarz, 1978",
+   "summary": "The Bayesian information criterion penalizes model size; used to choose the number of mixture components.",
+   "tags": "model selection bic mixture components",
+   "practice": "clustering_methods"
+  },
+  {
+   "id": "boxjenkins1970",
+   "title": "Time Series Analysis: Forecasting and Control",
+   "cite": "Box and Jenkins, 1970",
+   "summary": "Systematic identification, estimation and checking of ARIMA models, including seasonal variants.",
+   "tags": "time series arima seasonal forecasting",
+   "practice": "ts_classical"
+  },
+  {
+   "id": "hyndman2006accuracy",
+   "title": "Another Look at Measures of Forecast Accuracy",
+   "cite": "Hyndman and Koehler, 2006",
+   "summary": "Reviews forecast error measures and recommends scale-free errors judged against naive benchmarks.",
+   "tags": "time series forecast accuracy smape naive benchmark",
+   "practice": "ts_baseline"
+  },
+  {
+   "id": "makridakis2018m4",
+   "title": "The M4 Competition: Results, Findings, Conclusion and Way Forward",
+   "cite": "Makridakis et al., 2018",
+   "summary": "Large forecasting competition where combinations and well-tuned statistical methods were hard to beat and simple benchmarks stayed competitive.",
+   "tags": "time series competition benchmarks combinations",
+   "practice": "ts_baseline"
+  },
+  {
+   "id": "bergmeir2018cv",
+   "title": "A Note on the Validity of Cross-Validation for Evaluating Autoregressive Time Series Prediction",
+   "cite": "Bergmeir, Hyndman and Koo, 2018",
+   "summary": "Shows when standard cross-validation is valid for autoregressive models and why ordered evaluation is the safe default.",
+   "tags": "time series cross validation evaluation ordered split",
+   "practice": "ts_eval"
+  },
+  {
+   "id": "kohavi1995cv",
+   "title": "A Study of Cross-Validation and Bootstrap for Accuracy Estimation and Model Selection",
+   "cite": "Kohavi, 1995",
+   "summary": "Recommends stratified ten-fold cross-validation for model selection on real-world data.",
+   "tags": "cross validation model selection stratified evaluation",
+   "practice": "evaluation"
+  },
+  {
+   "id": "varma2006bias",
+   "title": "Bias in Error Estimation When Using Cross-Validation for Model Selection",
+   "cite": "Varma and Simon, 2006",
+   "summary": "Reusing the same folds to tune and to report performance is optimistically biased; nested CV or a held-out set fixes it.",
+   "tags": "cross validation bias tuning nested holdout",
+   "practice": "evaluation"
+  },
+  {
+   "id": "cawley2010selection",
+   "title": "On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation",
+   "cite": "Cawley and Talbot, 2010",
+   "summary": "Model selection itself can overfit; performance estimates must come from data not used for selection.",
+   "tags": "overfitting model selection bias evaluation holdout",
+   "practice": "evaluation"
+  },
+  {
+   "id": "kaufman2012leakage",
+   "title": "Leakage in Data Mining: Formulation, Detection, and Avoidance",
+   "cite": "Kaufman, Rosset and Perlich, 2012",
+   "summary": "Defines leakage as information unavailable at prediction time and shows how it inflates results.",
+   "tags": "leakage target future information detection",
+   "practice": "leakage"
+  },
+  {
+   "id": "kapoor2023leakage",
+   "title": "Leakage and the Reproducibility Crisis in Machine-Learning-Based Science",
+   "cite": "Kapoor and Narayanan, 2023",
+   "summary": "Surveys leakage across scientific fields and proposes model info sheets to document train-test separation.",
+   "tags": "leakage reproducibility science duplicates preprocessing",
+   "practice": "leakage"
+  },
+  {
+   "id": "chawla2002smote",
+   "title": "SMOTE: Synthetic Minority Over-sampling Technique",
+   "cite": "Chawla et al., 2002",
+   "summary": "Creates synthetic minority examples by interpolating neighbours to counter class imbalance.",
+   "tags": "imbalanced oversampling smote minority",
+   "practice": "imbalance"
+  },
+  {
+   "id": "he2009imbalanced",
+   "title": "Learning from Imbalanced Data",
+   "cite": "He and Garcia, 2009",
+   "summary": "Survey of sampling, cost-sensitive and algorithmic remedies for imbalanced classification and how to evaluate them.",
+   "tags": "imbalanced classification cost sensitive class weights evaluation",
+   "practice": "imbalance"
+  },
+  {
+   "id": "saito2015prc",
+   "title": "The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets",
+   "cite": "Saito and Rehmsmeier, 2015",
+   "summary": "On imbalanced data, precision-recall curves reveal weaknesses that ROC curves hide.",
+   "tags": "imbalanced precision recall roc evaluation pr auc",
+   "practice": "imbalance_metric"
+  },
+  {
+   "id": "davis2006prroc",
+   "title": "The Relationship Between Precision-Recall and ROC Curves",
+   "cite": "Davis and Goadrich, 2006",
+   "summary": "Proves a curve dominates in ROC space if and only if it dominates in PR space, and discusses PR interpolation.",
+   "tags": "precision recall roc relationship evaluation",
+   "practice": "imbalance_metric"
+  },
+  {
+   "id": "guo2017calibration",
+   "title": "On Calibration of Modern Neural Networks",
+   "cite": "Guo et al., 2017",
+   "summary": "Modern networks are often overconfident; temperature scaling is a simple, effective post-hoc fix; introduces ECE reporting.",
+   "tags": "calibration expected calibration error temperature scaling confidence",
+   "practice": "calibration"
+  },
+  {
+   "id": "niculescu2005calibration",
+   "title": "Predicting Good Probabilities with Supervised Learning",
+   "cite": "Niculescu-Mizil and Caruana, 2005",
+   "summary": "Boosted trees and SVMs produce distorted probabilities; Platt scaling and isotonic regression correct them.",
+   "tags": "calibration probabilities boosting platt isotonic",
+   "practice": "calibration"
+  },
+  {
+   "id": "lundberg2017shap",
+   "title": "A Unified Approach to Interpreting Model Predictions",
+   "cite": "Lundberg and Lee, 2017",
+   "summary": "SHAP attributes a prediction to features using Shapley values with consistency guarantees.",
+   "tags": "explainability shap feature attribution",
+   "practice": "explainability"
+  },
+  {
+   "id": "lundberg2020treeshap",
+   "title": "From Local Explanations to Global Understanding with Explainable AI for Trees",
+   "cite": "Lundberg et al., 2020",
+   "summary": "Exact, fast SHAP values for tree ensembles and global summaries built from local explanations.",
+   "tags": "explainability tree shap global importance",
+   "practice": "explainability"
+  },
+  {
+   "id": "rudin2019stop",
+   "title": "Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead",
+   "cite": "Rudin, 2019",
+   "summary": "Argues that for high-stakes decisions inherently interpretable models should be preferred over post-hoc explanations.",
+   "tags": "interpretable models high stakes explainability",
+   "practice": "interpretable_first"
+  },
+  {
+   "id": "breiman2001cultures",
+   "title": "Statistical Modeling: The Two Cultures",
+   "cite": "Breiman, 2001",
+   "summary": "Contrasts data-modelling and algorithmic-modelling cultures and argues for predictive accuracy as a criterion.",
+   "tags": "statistics machine learning prediction philosophy",
+   "practice": "general"
+  },
+  {
+   "id": "demsar2006comparisons",
+   "title": "Statistical Comparisons of Classifiers over Multiple Data Sets",
+   "cite": "Demsar, 2006",
+   "summary": "Recommends non-parametric tests such as the Wilcoxon signed-rank test when comparing methods across datasets.",
+   "tags": "evaluation statistics wilcoxon multiple datasets comparison",
+   "practice": "evaluation_stats"
+  },
+  {
+   "id": "rubin1976missing",
+   "title": "Inference and Missing Data",
+   "cite": "Rubin, 1976",
+   "summary": "Defines missing completely at random, missing at random and not at random, and when missingness can be ignored.",
+   "tags": "missing data mcar mar mnar mechanism",
+   "practice": "missing"
+  },
+  {
+   "id": "little1988mcar",
+   "title": "A Test of Missing Completely at Random for Multivariate Data with Missing Values",
+   "cite": "Little, 1988",
+   "summary": "A chi-square test of whether data are MCAR using means across missingness patterns.",
+   "tags": "missing data mcar test",
+   "practice": "missing"
+  },
+  {
+   "id": "vanbuuren2011mice",
+   "title": "mice: Multivariate Imputation by Chained Equations in R",
+   "cite": "van Buuren and Groothuis-Oudshoorn, 2011",
+   "summary": "Iterative imputation that models each incomplete variable from the others, producing multiple imputations.",
+   "tags": "missing data imputation mice chained equations",
+   "practice": "missing"
+  },
+  {
+   "id": "northcutt2021cl",
+   "title": "Confident Learning: Estimating Uncertainty in Dataset Labels",
+   "cite": "Northcutt, Jiang and Chuang, 2021",
+   "summary": "Uses out-of-sample predicted probabilities and per-class thresholds to find likely label errors.",
+   "tags": "label noise confident learning label errors",
+   "practice": "label_noise"
+  },
+  {
+   "id": "frenay2014labelnoise",
+   "title": "Classification in the Presence of Label Noise: A Survey",
+   "cite": "Frenay and Verleysen, 2014",
+   "summary": "Surveys the effects of label noise and robust, cleansing and noise-modelling approaches.",
+   "tags": "label noise survey robust classification",
+   "practice": "label_noise"
+  },
+  {
+   "id": "dudik2011dr",
+   "title": "Doubly Robust Policy Evaluation and Learning",
+   "cite": "Dudik, Langford and Li, 2011",
+   "summary": "Combines a reward model with inverse propensity weighting so the estimate is accurate if either part is.",
+   "tags": "offline policy evaluation doubly robust bandit ipw",
+   "practice": "offline_rl"
+  },
+  {
+   "id": "horvitz1952ipw",
+   "title": "A Generalization of Sampling Without Replacement from a Finite Universe",
+   "cite": "Horvitz and Thompson, 1952",
+   "summary": "Inverse-probability weighting gives unbiased estimates under unequal selection probabilities; the root of IPW.",
+   "tags": "inverse propensity weighting estimator sampling",
+   "practice": "offline_rl"
+  },
+  {
+   "id": "li2010bandit",
+   "title": "A Contextual-Bandit Approach to Personalized News Article Recommendation",
+   "cite": "Li et al., 2010",
+   "summary": "LinUCB for contextual bandits, with an unbiased offline replay evaluation on logged data.",
+   "tags": "contextual bandit recommendation offline evaluation",
+   "practice": "offline_rl"
+  },
+  {
+   "id": "rabanser2019shift",
+   "title": "Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift",
+   "cite": "Rabanser, Guennemann and Lipton, 2019",
+   "summary": "Univariate two-sample tests on features, aggregated with a correction, are strong and simple shift detectors.",
+   "tags": "dataset shift drift two sample test ks",
+   "practice": "drift"
+  },
+  {
+   "id": "feurer2015autosklearn",
+   "title": "Efficient and Robust Automated Machine Learning",
+   "cite": "Feurer et al., 2015",
+   "summary": "auto-sklearn warm-starts its search from configurations that worked on datasets with similar meta-features.",
+   "tags": "automl meta learning warm start meta features similar datasets",
+   "practice": "memory"
+  },
+  {
+   "id": "guo2024dsagent",
+   "title": "DS-Agent: Automated Data Science by Empowering Large Language Models with Case-Based Reasoning",
+   "cite": "Guo et al., 2024",
+   "summary": "An LLM agent retrieves and adapts past solutions to similar tasks to build data-science pipelines.",
+   "tags": "llm agent case based reasoning data science memory",
+   "practice": "memory"
+  },
+  {
+   "id": "du2023debate",
+   "title": "Improving Factuality and Reasoning in Language Models through Multiagent Debate",
+   "cite": "Du et al., 2023",
+   "summary": "Several model instances propose and critique answers over rounds, improving factuality on several benchmarks.",
+   "tags": "multi agent debate llm factuality",
+   "practice": "debate"
+  },
+  {
+   "id": "micci2001targetenc",
+   "title": "A Preprocessing Scheme for High-Cardinality Categorical Attributes in Classification and Prediction Problems",
+   "cite": "Micci-Barreca, 2001",
+   "summary": "Replaces each category with a smoothed estimate of the target, a compact encoding for many levels.",
+   "tags": "high cardinality target encoding categorical",
+   "practice": "encoding"
+  },
+  {
+   "id": "yeo2000power",
+   "title": "A New Family of Power Transformations to Improve Normality or Symmetry",
+   "cite": "Yeo and Johnson, 2000",
+   "summary": "A power transform that, unlike Box-Cox, works for zero and negative values.",
+   "tags": "power transform skew normality yeo johnson",
+   "practice": "preprocessing"
+  },
+  {
+   "id": "breusch1979bp",
+   "title": "A Simple Test for Heteroscedasticity and Random Coefficient Variation",
+   "cite": "Breusch and Pagan, 1979",
+   "summary": "Regresses squared residuals on the predictors to test for non-constant error variance.",
+   "tags": "heteroscedasticity test regression residuals",
+   "practice": "assumptions"
+  },
+  {
+   "id": "durbin1950dw",
+   "title": "Testing for Serial Correlation in Least Squares Regression",
+   "cite": "Durbin and Watson, 1950",
+   "summary": "A statistic near 2 indicates no first-order autocorrelation in regression residuals.",
+   "tags": "autocorrelation durbin watson residuals independence",
+   "practice": "assumptions"
+  },
+  {
+   "id": "bergstra2012random",
+   "title": "Random Search for Hyper-Parameter Optimization",
+   "cite": "Bergstra and Bengio, 2012",
+   "summary": "Random search beats grid search when only a few hyperparameters matter.",
+   "tags": "hyperparameter tuning random search",
+   "practice": "tuning"
+  },
+  {
+   "id": "akiba2019optuna",
+   "title": "Optuna: A Next-generation Hyperparameter Optimization Framework",
+   "cite": "Akiba et al., 2019",
+   "summary": "Define-by-run search spaces with efficient sampling and pruning.",
+   "tags": "hyperparameter tuning optuna tpe",
+   "practice": "tuning"
+  },
+  {
+   "id": "cohen1988power",
+   "title": "Statistical Power Analysis for the Behavioral Sciences",
+   "cite": "Cohen, 1988",
+   "summary": "Introduces effect-size conventions (small, medium, large) for reporting practical significance.",
+   "tags": "effect size cohen d practical significance",
+   "practice": "effect_size"
+  },
+  {
+   "id": "wasserstein2016asa",
+   "title": "The ASA Statement on p-Values: Context, Process, and Purpose",
+   "cite": "Wasserstein and Lazar, 2016",
+   "summary": "p-values do not measure effect size or importance and should not be reported alone.",
+   "tags": "p values effect size statistics reporting",
+   "practice": "effect_size"
+  }
+ ]
+}

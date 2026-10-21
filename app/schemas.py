@@ -34,6 +34,7 @@ class Check(BaseModel):
 
 class Claim(BaseModel):
     text: str
+    kind: str = "general"           # cv, validity, interpretability, cost, practice, llm
     evidence: list[Evidence] = Field(default_factory=list)
     checks: list[Check] = Field(default_factory=list)
     source: Literal["rule", "llm"] = "rule"

@@ -62,3 +62,23 @@ def slice_evidence(ev: Evidence, key: str | None, value: Any = None) -> Evidence
     if key is None:
         return ev
     return Evidence(tool=ev.tool, inputs={**ev.inputs, "item": key}, result={key: value}, run_id=ev.run_id)
+
+
+def evidence_for_run(log, run_id: str | None) -> Evidence | None:
+    """Rebuild an Evidence object from the tool log (the logged result, not a copy)."""
+    rec = log.get(run_id) if run_id else None
+    if rec is None:
+        return None
+    return Evidence(tool=rec["tool"], inputs=rec["inputs"], result=rec["result"], run_id=run_id)
+
+
+def cv_claim(log, cand, text: str | None = None):
+    """A claim about a candidate's CV score, checkable against its evaluation run."""
+    from app.schemas import Check, Claim
+    ev = evidence_for_run(log, cand.eval_run_id)
+    if ev is None:
+        return None
+    return Claim(kind="cv", text=text or f"{cand.id} scores {cand.cv.primary_mean:.4f} {cand.cv.primary} in cross-validation "
+                 f"(sd {cand.cv.primary_std:.4f})",
+                 evidence=[ev], checks=[Check(run_id=ev.run_id, path="primary_mean", op="approx",
+                                              value=cand.cv.primary_mean, tol=1e-4)])

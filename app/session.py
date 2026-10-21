@@ -28,6 +28,7 @@ class RunFlags(BaseModel):
     tuning: bool = True
     explain: bool = True
     llm_positions: bool = True
+    memory_exclude_same: bool = False   # eval: suggestions only from other datasets
 
 
 class Session(BaseModel):
