@@ -23,9 +23,17 @@ class BusinessInsightAgent(BaseAgent):
         tol = 0.1 if bounded_metric(plan.metric) else 0.1 * abs(cands[table["best"]]["primary_mean"])
         if plan.explainability_required:
             interp = sorted([cid for cid, r in cands.items() if r["interpretable"]], key=lambda cid: cands[cid]["gap_to_best"])
-            pref = interp[0] if interp else table["best"]
-            reasons = [Claim(kind="interpretability", text=f"the client asked for an explainable model; {pref} ({cands[pref]['model']}) is interpretable",
-                             evidence=[ev], checks=[Check(run_id=ev.run_id, path=f"candidates.{pref}.interpretable", op="true")])]
+            if interp:
+                pref = interp[0]
+                reasons = [Claim(kind="interpretability",
+                                 text=f"the client asked for an explainable model; {pref} ({cands[pref]['model']}) is interpretable",
+                                 evidence=[ev], checks=[Check(run_id=ev.run_id, path=f"candidates.{pref}.interpretable", op="true")])]
+            else:
+                pref = table["best"]
+                reasons = [Claim(kind="interpretability_unavailable",
+                                 text=f"the client asked for an explainable model, but no surviving candidate is interpretable; "
+                                      f"{pref} is the best-scoring option and needs SHAP explanations",
+                                 evidence=[ev], checks=[Check(run_id=ev.run_id, path=f"candidates.{pref}.interpretable", op="false")])]
         else:
             close = [cid for cid, r in cands.items() if r["within_1sd"]]
             pref = min(close, key=lambda cid: cands[cid]["fit_time"])

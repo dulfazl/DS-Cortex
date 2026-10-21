@@ -13,20 +13,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col">
         <header className="border-b border-border bg-surface">
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4">
+            <Link href="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap font-semibold tracking-tight">
               <span className="grid h-7 w-7 place-items-center rounded-md bg-accent text-sm text-white">DS</span>
               <span>DS Cortex</span>
             </Link>
-            <nav className="flex items-center gap-4 text-sm text-muted">
+            <nav className="flex items-center gap-3 whitespace-nowrap text-sm text-muted sm:gap-4">
               <Link href="/" className="hover:text-text">
-                New analysis
+                New<span className="hidden sm:inline"> analysis</span>
               </Link>
               <Link href="/replay" className="hover:text-text">
                 Replays
               </Link>
             </nav>
-            <div className="ml-auto">
+            <div className="ml-auto hidden sm:block">
               <MetaBadge />
             </div>
           </div>

@@ -28,12 +28,18 @@ def critic_loop(ctx: AgentContext, architect: MLArchitectAgent, critic: Pipeline
     ranked = MLArchitectAgent.rank(cands, plan.metric)
     reviewed = ranked[:top_k]
     for c in ranked[top_k:]:
-        if c.origin != "memory":
-            c.status = "rejected"
-            c.rationale += f" | not reviewed: outside the top {top_k} by cross-validated {plan.metric}"
+        c.status = "rejected"
+        c.rationale += f" | not reviewed: outside the top {top_k} by cross-validated {plan.metric}"
+    keep = {c.id for c in ranked[top_k:] if c.origin == "memory"}   # memory suggestions are always reviewed
+    if plan.explainability_required and not any(c.interpretable for c in reviewed):
+        best_interp = next((c for c in ranked[top_k:] if c.interpretable), None)
+        if best_interp:
+            keep.add(best_interp.id)   # the client asked for explainability: an interpretable option must reach the debate
     for c in ranked[top_k:]:
-        if c.origin == "memory":
-            reviewed.append(c)     # a memory suggestion is always reviewed, so it can be rejected on the record
+        if c.id in keep:
+            c.status = "active"
+            c.rationale = c.rationale.split(" | not reviewed")[0]
+            reviewed.append(c)
     for c in reviewed:
         c.objections = critic.review(c, df_train, plan, baseline_mean, top_feature)
         if c.origin == "memory" and memory_suggestions and c.id in memory_suggestions:

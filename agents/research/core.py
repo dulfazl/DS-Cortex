@@ -64,7 +64,7 @@ class ResearchAgent(BaseAgent):
         in_practice = [c for c in ranked if c.model in PRACTICE.get(practice, set())]
         pref = in_practice[0] if in_practice else ranked[0]
         reasons = []
-        if note and note["id"] in ctx["result"]["ids"]:
+        if note and note["id"] in ctx["result"]["ids"] and in_practice:
             reasons.append(Claim(kind="practice", text=f"established practice for {why} (see {note['cite']}: {note['title']})",
                                  evidence=[ctx["evidence"]],
                                  checks=[Check(run_id=ctx["evidence"].run_id, path="ids", op="contains", value=note["id"])]))
