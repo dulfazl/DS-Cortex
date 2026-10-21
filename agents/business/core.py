@@ -4,6 +4,7 @@ statistically as good as the best."""
 from __future__ import annotations
 
 from agents.base import BaseAgent, cv_claim
+from app.llm import narrate
 from app.schemas import Check, Claim, DebatePosition, TaskPlan
 from tools import business_tools as bt
 from tools.common import clip01
@@ -39,3 +40,45 @@ class BusinessInsightAgent(BaseAgent):
         conf = clip01(1 - cands[pref]["gap_to_best"] / tol) if tol else 0.5
         return DebatePosition(agent=self.name, preferred=pref, reasons=reasons, confidence=round(conf, 4),
                               confidence_method="effect_size", round=round_no)
+
+    def stakeholder_summary(self, plan: TaskPlan, test: dict, importance: dict | None, profile, audit,
+                            ledger_steps: dict[str, int]) -> dict:
+        """KPIs and recommendations in plain language. Each recommendation cites an upstream finding
+        (a ledger step); claims are softened where the Statistician flagged assumption violations."""
+        self.started("writing the stakeholder summary")
+        metric, score, base = plan.metric, test["score"], test["baseline"]["score"]
+        k, _ = self.ctx.tool("business_tools.kpis", bt.kpis, {"metric": metric}, metric, score, base)
+        gain, rel = k["gain"], k["relative_gain"]
+        kpis = [{"name": f"held-out {metric}", "value": score, "baseline": base,
+                 "lift": f"{rel:+.1%} relative to the baseline" if rel is not None else None}]
+        drivers = list((importance or {}).get("importance", {}).items())[:3]
+        recs = []
+        if drivers:
+            recs.append({"text": "The outcome is driven mostly by " + ", ".join(d for d, _ in drivers)
+                         + ". Focus data quality and business attention there.",
+                         "cites": f"step {ledger_steps.get('final_test_score', '?')} (final model) and the importance analysis"})
+        for f in (audit.findings if audit else [])[:3]:
+            if f.severity in ("blocker", "high"):
+                recs.append({"text": f"Data issue to fix at the source: {f.issue_type.replace('_', ' ')} in "
+                                     f"{f.column or 'the rows'} ({f.recommended_action}).",
+                             "cites": f"audit finding on {f.column or 'rows'} (step {ledger_steps.get('audit:' + f.issue_type + (':' + f.column if f.column else ''), '?')})"})
+        caveats = []
+        flags = {fl.issue for fl in (profile.flags if profile else [])}
+        if "heteroscedasticity" in flags:
+            caveats.append("Prediction errors are larger for some kinds of rows, so treat single predictions as approximate.")
+        if "small_sample" in flags:
+            caveats.append("The dataset is small: the measured performance could shift noticeably on new data.")
+        if "weak_signal" in flags:
+            caveats.append("Each input on its own says little about the outcome, so gains over the baseline are modest.")
+        if "multicollinearity" in flags:
+            caveats.append("Several inputs move together, so do not read the effect of any single input in isolation.")
+        if gain <= 0:
+            caveats.append("The chosen model did not beat the simple baseline on the held-out data.")
+        facts = {"metric": metric, "score": score, "baseline": base, "relative_lift": rel,
+                 "drivers": [d for d, _ in drivers], "caveats": caveats, "recommendations": [r["text"] for r in recs]}
+        fallback = (f"On data it never saw, the model scores {score:.3f} {metric} against {base:.3f} for a simple baseline"
+                    + (f" ({rel:+.1%})." if rel is not None else ".") + (" " + " ".join(caveats) if caveats else ""))
+        text, source = narrate(self.ctx.llm, "Write a short summary for a business stakeholder. Soften any claim the caveats "
+                                             "qualify.", facts, fallback, depth="beginner")
+        self.finished("stakeholder summary ready")
+        return {"headline": text, "source": source, "kpis": kpis, "recommendations": recs, "caveats": caveats}

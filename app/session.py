@@ -29,6 +29,7 @@ class RunFlags(BaseModel):
     explain: bool = True
     llm_positions: bool = True
     memory_exclude_same: bool = False   # eval: suggestions only from other datasets
+    force_shap_failure: bool = False    # tests: exercise the permutation-importance fallback
 
 
 class Session(BaseModel):

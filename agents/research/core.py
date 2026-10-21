@@ -81,3 +81,17 @@ class ResearchAgent(BaseAgent):
                 notes.append("Research note: forecasts should be reported against the seasonal naive benchmark, as here.")
         return DebatePosition(agent=self.name, preferred=pref.id, reasons=reasons, confidence=0.6,
                               confidence_method="rule", round=round_no), notes
+
+    def context_note(self, plan: TaskPlan, profile: StatisticalProfile | None) -> dict:
+        """A short context note and a rough novelty flag. Labelled: context, not a literature review."""
+        ctx = self.context(plan, profile)
+        res = ctx["result"]
+        hits = res["hits"][:4]
+        top = hits[0]["similarity"] if hits else 0.0
+        novelty = ("little matching context in the notes: this setting may be less studied, or the notes are thin here"
+                   if top < 0.15 else "well covered by established practice in the notes")
+        text = ("Context, not a literature review. Closest notes: " +
+                "; ".join(f"{h['title']} ({h['cite']}): {h['summary']}" for h in hits[:3])) if hits else \
+            "Context, not a literature review. No closely matching notes."
+        return {"note": text, "novelty": novelty, "top_similarity": top, "hits": hits, "run_id": ctx["evidence"].run_id,
+                "disclaimer": res["disclaimer"]}

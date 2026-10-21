@@ -157,6 +157,11 @@ def run_debate(ctx: AgentContext, survivors: list[CandidatePipeline], plan: Task
                                      text="conflict: " + "; ".join(f"{p.agent} prefers {p.preferred}" for p in live.values())))
         state = DebateState(positions=live, candidates=cands, plan=plan, explainability_waived=explainability_waived)
         chosen, decisions = resolve(state)
+        if not decisions:
+            others = "; ".join(f"{p.agent} prefers {p.preferred}" for p in live.values()
+                               if p.agent not in ("ml_architect", "research") and p.preferred != chosen)
+            decisions = [Decision(chosen, "architect_default",
+                                  f"no table rule overturns the Architect's pick {chosen} ({others or 'no other deciding view'})")]
         for d in decisions:
             transcript.append(DebateTurn(round=round_no, agent="supervisor", kind="resolution",
                                          text=f"[{d.rule}] {d.reason}", data={"rule": d.rule, "tiebreak": d.tiebreak}))
