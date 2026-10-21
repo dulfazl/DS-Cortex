@@ -277,6 +277,8 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
         cw = "balanced" if bal else None
         if m == "dummy":
             return DummyClassifier(strategy="prior")
+        if m == "dummy_stratified":
+            return DummyClassifier(strategy="stratified", random_state=seed)
         if m == "logreg":
             return LogisticRegression(C=p.get("C", 1.0), max_iter=3000, class_weight=cw)
         if m == "logreg_l1":

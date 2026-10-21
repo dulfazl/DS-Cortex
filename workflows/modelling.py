@@ -46,7 +46,17 @@ def critic_loop(ctx: AgentContext, architect: MLArchitectAgent, critic: Pipeline
             o = critic.review_memory_suggestion(c, memory_suggestions[c.id], plan, target_type, baseline_mean)
             if o:
                 c.objections.append(o)
-    active = list(reviewed)
+    # a memory suggestion whose analogy does not hold is rejected now, before any revision can launder it
+    for c in reviewed:
+        bad = [o for o in c.objections if o.check == "memory_fit_check"]
+        if bad:
+            c.status = "rejected"
+            c.rationale += f" | rejected by the Critic: {bad[0].message}"
+            ctx.ledger.add(Recommendation(agent="pipeline_critic", decision_point=f"reject:{c.id}",
+                                          recommendation=f"reject the memory suggestion {c.id}", rationale=bad[0].message,
+                                          evidence=bad[0].claim.evidence, confidence=0.95, confidence_method="rule"),
+                           options=["keep", "reject"], chosen="reject")
+    active = [c for c in reviewed if c.status != "rejected"]
     stuck: set[str] = set()       # candidates where a revision did not help: not revised again
     for round_no in range(1, max_rounds + 1):
         to_revise = [c for c in active if c.status == "active" and c.id not in stuck and
@@ -91,10 +101,9 @@ def critic_loop(ctx: AgentContext, architect: MLArchitectAgent, critic: Pipeline
                            options=[c.id for c in to_revise], chosen="; ".join(changes))
         ctx.emit("critic_round", {"round": round_no, "changes": changes})
     for c in active:
-        if any(o.severity in REJECTING and not o.resolved for o in c.objections) or \
-                any(o.check == "memory_fit_check" for o in c.objections):
+        if any(o.severity in REJECTING and not o.resolved for o in c.objections):
             c.status = "rejected"
-            why = "; ".join(o.message for o in c.objections if o.severity in REJECTING or o.check == "memory_fit_check")
+            why = "; ".join(o.message for o in c.objections if o.severity in REJECTING)
             c.rationale += f" | rejected by the Critic: {why}"
             ev = [o.claim.evidence[0] for o in c.objections if o.claim.evidence][:3]
             ctx.ledger.add(Recommendation(agent="pipeline_critic", decision_point=f"reject:{c.id}",
@@ -102,7 +111,7 @@ def critic_loop(ctx: AgentContext, architect: MLArchitectAgent, critic: Pipeline
                                           confidence=0.95, confidence_method="rule"),
                            options=["keep", "reject"], chosen="reject")
     survivors = [c for c in active if c.status == "active"]
-    if not survivors:      # never leave the debate empty: keep the best, objections on record
+    if not survivors and active:      # never leave the debate empty: keep the best, objections on record
         best = MLArchitectAgent.rank(active, plan.metric)[0]
         best.status = "active"
         best.rationale += " | kept although every candidate drew objections"

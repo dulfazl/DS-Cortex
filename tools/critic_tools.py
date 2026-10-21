@@ -64,12 +64,21 @@ def leakage_probe(spec: dict, df_train: pd.DataFrame, task: dict, seed: int, bas
     shuffled[task["target"]] = rng.permutation(shuffled[task["target"]].values)
     sh = pc.cv_evaluate(spec, shuffled, task, seed, folds=3, repeats=1)
     out["shuffled_mean"] = sh["primary_mean"]
+    # Chance level: what a model with no signal scores. For classification that is a stratified random guess
+    # (a prior-only dummy scores below chance on F1 macro, which would make every model look leaky).
+    if task["task_family"] == "classification":
+        chance = pc.cv_evaluate({"model": "dummy_stratified", "prep": {}}, df_train, task, seed, folds=3, repeats=1)["primary_mean"]
+        ref = max(chance, baseline_mean) if pc.greater_is_better(metric) else min(chance, baseline_mean)
+    else:
+        ref = baseline_mean
+    out["chance_reference"] = ref
+    gain = pc.oriented(metric, cv_mean) - pc.oriented(metric, ref)
+    # With a shuffled target the model should lose (almost) all of its gain over chance. Keeping more than half
+    # of it means it learns from structure that is not the target (duplicates, ids, group overlap).
+    out["shuffled_retained_gain"] = float((pc.oriented(metric, sh["primary_mean"]) - pc.oriented(metric, ref)) / gain) if gain > 0 else 0.0
+    margin = 0.05 if bounded_metric(metric) else 0.1 * abs(ref)
+    out["shuffled_above_baseline"] = bool(gain > margin and out["shuffled_retained_gain"] > 0.5)
     gain = pc.oriented(metric, cv_mean) - pc.oriented(metric, baseline_mean)
-    # With a shuffled target the model should lose (almost) all of its gain over the baseline. Keeping more
-    # than half of it means it learns from structure that is not the target (duplicates, ids, group overlap).
-    out["shuffled_retained_gain"] = float((pc.oriented(metric, sh["primary_mean"]) - pc.oriented(metric, baseline_mean))
-                                          / gain) if gain > 0 else 0.0
-    out["shuffled_above_baseline"] = bool(gain > 0 and out["shuffled_retained_gain"] > 0.5)
     out["near_perfect"] = bool(bounded_metric(metric) and metric not in ("silhouette", "r2") and cv_mean >= 0.99)
     if top_feature and top_feature in df_train.columns and gain > 0:
         dropped = pc.cv_evaluate(spec, df_train.drop(columns=[top_feature]), task, seed, folds=3, repeats=1)

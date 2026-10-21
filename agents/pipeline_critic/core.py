@@ -45,7 +45,7 @@ class PipelineCriticAgent(BaseAgent):
                              spec, df_train, task, seed, baseline_mean, cv["primary_mean"], top_feature)
                 if r.get("shuffled_above_baseline"):
                     obj("leakage_probe", "blocker",
-                        f"with a shuffled target the score stays at {r['shuffled_mean']:.3f} (baseline {baseline_mean:.3f}), "
+                        f"with a shuffled target the score stays at {r['shuffled_mean']:.3f} (chance {r['chance_reference']:.3f}), "
                         f"keeping {r['shuffled_retained_gain']:.0%} of the gain: the pipeline learns something that is "
                         "not the target", ev, "shuffled_above_baseline", "true")
                 elif r.get("near_perfect") and not r.get("collapse"):
