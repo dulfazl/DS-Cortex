@@ -22,7 +22,8 @@ def _path(name: str, default: Path) -> Path:
 @dataclass(frozen=True)
 class Settings:
     google_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.8-flash"
+    gemini_fallbacks: tuple[str, ...] = ("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
     llm_mode: str = "auto"  # auto | gemini | offline
     seed: int = SEED
     data_dir: Path = ROOT / "datasets"
@@ -58,7 +59,9 @@ def get_settings() -> Settings:
     origins = tuple(o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip())
     s = Settings(
         google_api_key=os.getenv("GOOGLE_API_KEY", ""),
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
+        gemini_fallbacks=tuple(m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",")
+                               if m.strip()),
         llm_mode=os.getenv("LLM_MODE", "auto"),
         seed=int(os.getenv("SEED", "42")),
         data_dir=data_dir,

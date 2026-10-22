@@ -177,7 +177,13 @@ class PipelineRun:
         finally:
             u = s.usage or {}
             for k, v in self.llm.usage.items():
-                u[k] = u.get(k, 0) + v
+                if isinstance(v, dict):     # calls per model
+                    merged = dict(u.get(k) or {})
+                    for m, n in v.items():
+                        merged[m] = merged.get(m, 0) + n
+                    u[k] = merged
+                else:
+                    u[k] = u.get(k, 0) + v
             u["seconds"] = round(u.get("seconds", 0) + time.perf_counter() - t0, 2)
             u["llm"] = self.llm.name
             s.usage = u

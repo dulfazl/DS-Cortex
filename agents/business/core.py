@@ -67,8 +67,13 @@ class BusinessInsightAgent(BaseAgent):
                          "cites": f"step {ledger_steps.get('final_test_score', '?')} (final model) and the importance analysis"})
         for f in (audit.findings if audit else [])[:3]:
             if f.severity in ("blocker", "high"):
-                recs.append({"text": f"Data issue to fix at the source: {f.issue_type.replace('_', ' ')} in "
-                                     f"{f.column or 'the rows'} ({f.recommended_action}).",
+                if f.issue_type in ("possible_proxy", "target_leakage"):
+                    text = (f"Check when '{f.column}' is recorded: it predicts the outcome very strongly on its own. "
+                            "If it is only known after the outcome, it must not be used.")
+                else:
+                    text = (f"Data issue to fix at the source: {f.issue_type.replace('_', ' ')} in "
+                            f"{f.column or 'the rows'} ({f.recommended_action}).")
+                recs.append({"text": text,
                              "cites": f"audit finding on {f.column or 'rows'} (step {ledger_steps.get('audit:' + f.issue_type + (':' + f.column if f.column else ''), '?')})"})
         caveats = []
         flags = {fl.issue for fl in (profile.flags if profile else [])}

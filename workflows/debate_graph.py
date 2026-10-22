@@ -50,16 +50,16 @@ def _positions(ctx: AgentContext, survivors, plan, profile, round_no) -> tuple[d
 
 
 def _evidence_table(ctx: AgentContext, survivors: list[CandidatePipeline]) -> list[dict]:
+    """One row per checkable fact: the run_id, the exact path inside that run's logged result, its value."""
     rows = []
     for c in survivors:
-        rows.append({"candidate": c.id, "model": c.model, "run_id": c.eval_run_id,
-                     "fields": {"primary_mean": round(c.cv.primary_mean, 6), "primary_std": round(c.cv.primary_std, 6),
-                                "fit_time": round(c.cv.fit_time, 4)}})
+        for path, value in (("primary_mean", c.cv.primary_mean), ("primary_std", c.cv.primary_std), ("fit_time", c.cv.fit_time)):
+            rows.append({"candidate": c.id, "model": c.model, "run_id": c.eval_run_id, "path": path, "value": round(value, 6)})
         for o in c.objections:
             chk = o.claim.checks[0] if o.claim.checks else None
             if chk:
-                rows.append({"candidate": c.id, "objection": o.check, "run_id": chk.run_id,
-                             "fields": {chk.path: (o.claim.evidence[0].result if o.claim.evidence else {}).get(chk.path)}})
+                value = (o.claim.evidence[0].result if o.claim.evidence else {}).get(chk.path)
+                rows.append({"candidate": c.id, "objection": o.check, "run_id": chk.run_id, "path": chk.path, "value": value})
     return rows
 
 
@@ -68,7 +68,8 @@ def _llm_augment(ctx: AgentContext, pos: DebatePosition, survivors, plan: TaskPl
     run_id and a field path; the verifier decides whether it counts."""
     ids = [c.id for c in survivors]
     prompt = (f"{load_prompt(pos.agent)}\nYou are the {pos.agent} agent in a model-selection debate. Metric: {plan.metric}.\n"
-              f"Current rule-based preference: {pos.preferred}.\nEvidence table (each row is a real tool run):\n"
+              f"Current rule-based preference: {pos.preferred}.\nEvidence table (each row is one fact from a real tool run; "
+              "cite its run_id and path exactly):\n"
               f"{json.dumps(_evidence_table(ctx, survivors))[:9000]}\n"
               "Reply as JSON {\"preferred\": <one of " + json.dumps(ids) + ">, \"claims\": [{\"text\": str, \"run_id\": str, "
               "\"path\": str, \"op\": \"approx\"|\"gt\"|\"lt\"|\"true\"|\"false\", \"value\": number|null}]} with at most two "

@@ -9,6 +9,7 @@ import datetime as dt
 import hashlib
 import json
 import re
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -21,7 +22,22 @@ from tools.verify_tools import numbers_supported
 NARRATOR_SYSTEM = (
     "You are a careful data-science narrator inside DS Cortex. Use only the facts given in JSON. "
     "Never introduce a number that is not in the facts. Never claim certainty the facts do not support. "
+    "Round numbers for readers (about three significant figures; percentages with one decimal). "
     "Write plain, short sentences.")
+
+
+COOL_DOWN_SECONDS = 300          # an overloaded model is skipped for this long
+LONG_WAIT_SECONDS = 60           # a 429 asking to wait longer than this is a daily quota: switch models
+
+# Shared by every run in the process, so a new run does not re-try a model that is retired or out of quota.
+_DEAD: set[str] = set()
+_COOLING: dict[str, float] = {}
+_state_lock = threading.Lock()
+
+
+def _retry_delay(text: str) -> float | None:
+    m = re.search(r"retryDelay'?:\s*'?(\d+(?:\.\d+)?)s", text)
+    return float(m.group(1)) if m else None
 
 
 class BudgetExceeded(RuntimeError):
@@ -49,20 +65,31 @@ class OfflineLLM(BaseLLM):
 
 
 class GeminiLLM(BaseLLM):
+    """Gemini through a model chain. A retired model (404) is dropped; an overloaded one (503) or one out
+    of its daily quota (429 with a long retry delay) is skipped for a while and the next model answers;
+    a short per-minute limit is waited out on the same model. When every model is unavailable the LLM
+    reports itself unavailable and the run uses template narration instead of waiting."""
     name = "gemini"
 
-    def __init__(self, api_key: str, model: str, max_retries: int = 5):
+    def __init__(self, api_key: str, model: str, fallbacks: tuple[str, ...] = (), max_retries: int = 4):
         super().__init__()
         from google import genai
         self._genai = genai
         self.client = genai.Client(api_key=api_key)
         self.model = model
+        self.fallbacks = tuple(m for m in fallbacks if m and m != model)
         self.max_retries = max_retries
         self.name = f"gemini:{model}"
+        self.usage["models"] = {}
+
+    def _chain(self) -> list[str]:
+        now = time.monotonic()
+        with _state_lock:
+            return [m for m in (self.model, *self.fallbacks) if m not in _DEAD and _COOLING.get(m, 0) <= now]
 
     @property
     def available(self) -> bool:
-        return True
+        return bool(self._chain())
 
     def _check_budget(self) -> None:
         budget = get_settings().daily_call_budget
@@ -78,32 +105,53 @@ class GeminiLLM(BaseLLM):
             c.execute("INSERT INTO usage(day, calls, tokens) VALUES (?,1,?) ON CONFLICT(day) DO UPDATE "
                       "SET calls=calls+1, tokens=tokens+excluded.tokens", (day, tokens))
 
+    @staticmethod
+    def _cool(model: str, seconds: float) -> None:
+        with _state_lock:
+            _COOLING[model] = time.monotonic() + seconds
+
     def generate(self, prompt, system=None, json_mode=False, temperature=0.2):
         self._check_budget()
         types = self._genai.types
         cfg = types.GenerateContentConfig(system_instruction=system, temperature=temperature,
                                           response_mime_type="application/json" if json_mode else None)
-        delay = 2.0
-        for attempt in range(self.max_retries):
-            try:
-                resp = self.client.models.generate_content(model=self.model, contents=prompt, config=cfg)
-                um = getattr(resp, "usage_metadata", None)
-                pt = int(getattr(um, "prompt_token_count", 0) or 0)
-                ot = int(getattr(um, "candidates_token_count", 0) or 0)
-                self.usage["calls"] += 1
-                self.usage["prompt_tokens"] += pt
-                self.usage["output_tokens"] += ot
-                self._count(pt + ot)
-                return resp.text
-            except Exception as e:  # noqa: BLE001 - SDK raises several types
-                code = getattr(e, "code", None) or getattr(e, "status_code", None)
-                retryable = code in (429, 500, 503) or "RESOURCE_EXHAUSTED" in str(e) or "UNAVAILABLE" in str(e)
-                if retryable and attempt < self.max_retries - 1:
-                    time.sleep(delay)
-                    delay = min(delay * 2, 60)
-                    continue
-                self.usage["failures"] += 1
-                return None
+        for model in self._chain():
+            for attempt in range(self.max_retries):
+                try:
+                    resp = self.client.models.generate_content(model=model, contents=prompt, config=cfg)
+                    um = getattr(resp, "usage_metadata", None)
+                    pt = int(getattr(um, "prompt_token_count", 0) or 0)
+                    ot = int(getattr(um, "candidates_token_count", 0) or 0)
+                    self.usage["calls"] += 1
+                    self.usage["prompt_tokens"] += pt
+                    self.usage["output_tokens"] += ot
+                    self.usage["models"][model] = self.usage["models"].get(model, 0) + 1
+                    self._count(pt + ot)
+                    return resp.text
+                except Exception as e:  # noqa: BLE001 - SDK raises several types
+                    code = getattr(e, "code", None) or getattr(e, "status_code", None)
+                    text = str(e)
+                    if code == 404 or "NOT_FOUND" in text:
+                        with _state_lock:
+                            _DEAD.add(model)
+                        break
+                    if code == 429 or "RESOURCE_EXHAUSTED" in text:
+                        wait = _retry_delay(text) or 10.0
+                        if wait > LONG_WAIT_SECONDS:      # daily quota for this model: use the next one
+                            self._cool(model, wait)
+                            break
+                        if attempt < self.max_retries - 1:
+                            time.sleep(min(wait, 30.0))   # per-minute limit: wait it out on this model
+                            continue
+                        break
+                    if code in (500, 503) or "UNAVAILABLE" in text:
+                        if attempt >= 1:
+                            self._cool(model, COOL_DOWN_SECONDS)
+                            break
+                        time.sleep(2.0)
+                        continue
+                    break
+        self.usage["failures"] += 1
         return None
 
 
@@ -152,7 +200,7 @@ def get_llm(mode: str | None = None) -> BaseLLM:
         return OfflineLLM()
     if not s.google_api_key:
         raise RuntimeError("LLM_MODE=gemini but GOOGLE_API_KEY is not set")
-    return GeminiLLM(s.google_api_key, s.gemini_model)
+    return GeminiLLM(s.google_api_key, s.gemini_model, s.gemini_fallbacks)
 
 
 # --------------------------------------------------------------------------- helpers
