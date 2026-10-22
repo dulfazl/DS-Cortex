@@ -1,5 +1,6 @@
 """The Gemini model chain, with a stub client: retired models are dropped, overloaded or out-of-quota
-models are skipped for a while, short per-minute limits are waited out on the same model."""
+models are skipped for a while; a per-minute limit hands over to the next model, and only when every
+model is briefly limited does the call wait, once, for the first to come back."""
 from types import SimpleNamespace
 
 import pytest
@@ -69,10 +70,30 @@ def test_daily_quota_switches_model_and_is_remembered_by_new_runs(monkeypatch):
     assert fresh.generate("hi") == "from second" and fresh_calls == ["second"]
 
 
-def test_per_minute_limit_waits_on_the_same_model(monkeypatch):
-    llm, calls = _llm({"primary": [MINUTE, MINUTE], "second": [], "third": []})
+def test_per_minute_limit_hands_over_to_the_next_model(monkeypatch):
+    slept = []
+    monkeypatch.setattr("app.llm.time.sleep", slept.append)
+    llm, calls = _llm({"primary": [MINUTE], "second": [], "third": []})
+    assert llm.generate("hi") == "from second"
+    assert calls == ["primary", "second"] and slept == []      # no waiting while another model is free
+
+
+def test_when_every_model_is_briefly_limited_it_waits_once_for_the_first(monkeypatch):
+    clock = {"t": 1000.0}
+    monkeypatch.setattr("app.llm.time.monotonic", lambda: clock["t"])
+    slept = []
+    monkeypatch.setattr("app.llm.time.sleep", lambda s: (slept.append(s), clock.__setitem__("t", clock["t"] + s)))
+    llm, calls = _llm({"primary": [MINUTE], "second": [MINUTE], "third": [MINUTE]})
     assert llm.generate("hi") == "from primary"
-    assert calls == ["primary"] * 3
+    assert calls == ["primary", "second", "third", "primary"]
+    assert slept == [7.0]
+
+
+def test_a_brief_limit_on_every_model_still_counts_as_available(monkeypatch):
+    llm, _ = _llm({"primary": [MINUTE], "second": [MINUTE], "third": [MINUTE, MINUTE]})
+    monkeypatch.setattr("app.llm.time.sleep", lambda s: None)    # time does not pass: nothing comes back
+    assert llm.generate("hi") is None
+    assert llm.available is True           # a 7-second wait: the next call sits it out instead of using templates
 
 
 def test_all_models_out_means_unavailable(monkeypatch):

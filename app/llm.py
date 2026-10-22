@@ -27,7 +27,7 @@ NARRATOR_SYSTEM = (
 
 
 COOL_DOWN_SECONDS = 300          # an overloaded model is skipped for this long
-LONG_WAIT_SECONDS = 60           # a 429 asking to wait longer than this is a daily quota: switch models
+MAX_SHORT_WAIT = 30              # when every model is briefly rate limited, wait at most this long, once
 
 # Shared by every run in the process, so a new run does not re-try a model that is retired or out of quota.
 _DEAD: set[str] = set()
@@ -89,7 +89,11 @@ class GeminiLLM(BaseLLM):
 
     @property
     def available(self) -> bool:
-        return bool(self._chain())
+        """A model is usable now, or within a short per-minute wait that generate() sits out."""
+        if self._chain():
+            return True
+        soonest = self._soonest_free()
+        return soonest is not None and soonest <= MAX_SHORT_WAIT
 
     def _check_budget(self) -> None:
         budget = get_settings().daily_call_budget
@@ -105,6 +109,13 @@ class GeminiLLM(BaseLLM):
             c.execute("INSERT INTO usage(day, calls, tokens) VALUES (?,1,?) ON CONFLICT(day) DO UPDATE "
                       "SET calls=calls+1, tokens=tokens+excluded.tokens", (day, tokens))
 
+    def _soonest_free(self) -> float | None:
+        """Seconds until the first cooling model of this chain is usable again (None if none is cooling)."""
+        now = time.monotonic()
+        with _state_lock:
+            waits = [_COOLING[m] - now for m in (self.model, *self.fallbacks) if m not in _DEAD and _COOLING.get(m, 0) > now]
+        return max(0.0, min(waits)) if waits else None
+
     @staticmethod
     def _cool(model: str, seconds: float) -> None:
         with _state_lock:
@@ -115,42 +126,43 @@ class GeminiLLM(BaseLLM):
         types = self._genai.types
         cfg = types.GenerateContentConfig(system_instruction=system, temperature=temperature,
                                           response_mime_type="application/json" if json_mode else None)
-        for model in self._chain():
-            for attempt in range(self.max_retries):
-                try:
-                    resp = self.client.models.generate_content(model=model, contents=prompt, config=cfg)
-                    um = getattr(resp, "usage_metadata", None)
-                    pt = int(getattr(um, "prompt_token_count", 0) or 0)
-                    ot = int(getattr(um, "candidates_token_count", 0) or 0)
-                    self.usage["calls"] += 1
-                    self.usage["prompt_tokens"] += pt
-                    self.usage["output_tokens"] += ot
-                    self.usage["models"][model] = self.usage["models"].get(model, 0) + 1
-                    self._count(pt + ot)
-                    return resp.text
-                except Exception as e:  # noqa: BLE001 - SDK raises several types
-                    code = getattr(e, "code", None) or getattr(e, "status_code", None)
-                    text = str(e)
-                    if code == 404 or "NOT_FOUND" in text:
-                        with _state_lock:
-                            _DEAD.add(model)
-                        break
-                    if code == 429 or "RESOURCE_EXHAUSTED" in text:
-                        wait = _retry_delay(text) or 10.0
-                        if wait > LONG_WAIT_SECONDS:      # daily quota for this model: use the next one
-                            self._cool(model, wait)
+        for _pass in range(2):   # a second pass only when every model is briefly rate limited
+            for model in self._chain():
+                for attempt in range(self.max_retries):
+                    try:
+                        resp = self.client.models.generate_content(model=model, contents=prompt, config=cfg)
+                        um = getattr(resp, "usage_metadata", None)
+                        pt = int(getattr(um, "prompt_token_count", 0) or 0)
+                        ot = int(getattr(um, "candidates_token_count", 0) or 0)
+                        self.usage["calls"] += 1
+                        self.usage["prompt_tokens"] += pt
+                        self.usage["output_tokens"] += ot
+                        self.usage["models"][model] = self.usage["models"].get(model, 0) + 1
+                        self._count(pt + ot)
+                        return resp.text
+                    except Exception as e:  # noqa: BLE001 - SDK raises several types
+                        code = getattr(e, "code", None) or getattr(e, "status_code", None)
+                        text = str(e)
+                        if code == 404 or "NOT_FOUND" in text:
+                            with _state_lock:
+                                _DEAD.add(model)
                             break
-                        if attempt < self.max_retries - 1:
-                            time.sleep(min(wait, 30.0))   # per-minute limit: wait it out on this model
+                        if code == 429 or "RESOURCE_EXHAUSTED" in text:
+                            # daily quota or per-minute limit: set the model aside for as long as Google asks
+                            # and use the next one now, instead of sleeping while other models are free
+                            self._cool(model, _retry_delay(text) or 10.0)
+                            break
+                        if code in (500, 503) or "UNAVAILABLE" in text:
+                            if attempt >= 1:
+                                self._cool(model, COOL_DOWN_SECONDS)
+                                break
+                            time.sleep(2.0)
                             continue
                         break
-                    if code in (500, 503) or "UNAVAILABLE" in text:
-                        if attempt >= 1:
-                            self._cool(model, COOL_DOWN_SECONDS)
-                            break
-                        time.sleep(2.0)
-                        continue
-                    break
+            soonest = self._soonest_free()
+            if _pass or self._chain() or soonest is None or soonest > MAX_SHORT_WAIT:
+                break
+            time.sleep(soonest)       # every model is briefly limited: wait for the first one, once
         self.usage["failures"] += 1
         return None
 
