@@ -28,6 +28,7 @@ NARRATOR_SYSTEM = (
 
 COOL_DOWN_SECONDS = 300          # an overloaded model is skipped for this long
 MAX_SHORT_WAIT = 30              # when every model is briefly rate limited, wait at most this long, once
+REQUEST_TIMEOUT_SECONDS = 60     # a request slower than this is abandoned and the model set aside like an overloaded one
 
 # Shared by every run in the process, so a new run does not re-try a model that is retired or out of quota.
 _DEAD: set[str] = set()
@@ -75,7 +76,8 @@ class GeminiLLM(BaseLLM):
         super().__init__()
         from google import genai
         self._genai = genai
-        self.client = genai.Client(api_key=api_key)
+        # no timeout by default: one stalled request held a run for minutes
+        self.client = genai.Client(api_key=api_key, http_options=genai.types.HttpOptions(timeout=REQUEST_TIMEOUT_SECONDS * 1000))
         self.model = model
         self.fallbacks = tuple(m for m in fallbacks if m and m != model)
         self.max_retries = max_retries
@@ -151,6 +153,9 @@ class GeminiLLM(BaseLLM):
                             # daily quota or per-minute limit: set the model aside for as long as Google asks
                             # and use the next one now, instead of sleeping while other models are free
                             self._cool(model, _retry_delay(text) or 10.0)
+                            break
+                        if "timeout" in type(e).__name__.lower() or "timed out" in text.lower():
+                            self._cool(model, COOL_DOWN_SECONDS)
                             break
                         if code in (500, 503) or "UNAVAILABLE" in text:
                             if attempt >= 1:

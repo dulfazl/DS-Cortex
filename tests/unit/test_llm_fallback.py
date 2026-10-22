@@ -100,3 +100,27 @@ def test_all_models_out_means_unavailable(monkeypatch):
     llm, calls = _llm({"primary": [DAILY], "second": [DAILY], "third": [DAILY]})
     assert llm.generate("hi") is None and llm.usage["failures"] == 1
     assert llm.available is False          # the run now uses templates without waiting
+
+
+class ReadTimeout(Exception):
+    """Stands in for httpx.ReadTimeout."""
+
+
+def test_a_request_that_times_out_moves_to_the_next_model(monkeypatch):
+    llm, calls = _llm({"primary": [], "second": [], "third": []})
+    inner = llm.client.models.generate_content
+
+    def slow_primary(model, contents, config):
+        if model == "primary":
+            calls.append(model)
+            raise ReadTimeout("The read operation timed out")
+        return inner(model, contents, config)
+    llm.client.models.generate_content = slow_primary
+    assert llm.generate("hi") == "from second"
+    llm.generate("again")
+    assert calls == ["primary", "second", "second"]       # the stalled model is set aside for later calls
+
+
+def test_the_client_has_a_request_timeout():
+    llm = GeminiLLM(api_key="test-key", model="primary")
+    assert llm.client._api_client._http_options.timeout == L.REQUEST_TIMEOUT_SECONDS * 1000
