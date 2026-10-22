@@ -57,3 +57,18 @@ def test_ledger_rejects_unevidenced_entry(tmp_path):
     with pytest.raises(EvidenceError):
         Ledger(s.id).add(_rec([]), options=["a"], chosen="a")
     assert Ledger(s.id).entries() == []
+
+
+def test_session_with_nan_scores_reads_back():
+    """A metric can be undefined for some data (NaN). The stored session must still load: a session that
+    cannot be read back breaks every request about the run, and the page shows 'running' forever."""
+    from app.schemas import CandidatePipeline, CVScores
+    s = store.create("x.csv", "Predict y")
+    s.candidates = [CandidatePipeline(id="c1", name="c1", model="logreg", spec={},
+                                      cv=CVScores(primary="pr_auc", primary_mean=0.3, primary_std=float("nan"), per_fold=[0.3],
+                                                  secondary={"recall_at_precision": float("nan"), "x": float("inf")}))]
+    s.stage_outputs["scores"] = {"a": float("nan")}
+    store.save(s)
+    back = store.get(s.id)
+    assert back.candidates[0].cv.secondary["x"] == float("inf")
+    assert back.candidates[0].cv.secondary["recall_at_precision"] != back.candidates[0].cv.secondary["recall_at_precision"]

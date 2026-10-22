@@ -60,11 +60,26 @@ Explore single agents interactively with the ADK web UI (needs a key): `PYTHONPA
 
 Free instances have 512 MB of RAM, no persistent disk and sleep after 15 idle minutes, so the first request
 after a pause is slow and finished runs disappear on restart (the memory store is re-seeded from
-`memory/seed_fingerprints.json`). The Blueprint uses fast settings, one run at a time and `MAX_ROWS=5000` to fit:
+`memory/seed_fingerprints.json`). The Blueprint uses fast settings, one run at a time and `MAX_ROWS=2000`:
 files with more rows are sampled down (stratified for classification), and the sampling is logged in the
 Decision Ledger and repeated by the exported script. In a test with a 512 MB limit, a 20,640-row file peaked
-at 507 MB without the cap and 295 MB with it. For larger CSVs choose a bigger plan, raise `MAX_ROWS` and add a
-disk mounted at `/data`.
+at 507 MB without a cap and 295 MB with a 5,000-row cap. For larger CSVs choose a bigger plan, raise `MAX_ROWS`
+and add a disk mounted at `/data`.
+
+A free instance also has a tenth of a CPU, which shapes the rest of the Blueprint:
+
+- **Threads.** Numerical libraries start one thread per host core, and in a container with that little CPU the
+  threads stall each other: in a test limited like the free plan, a logistic regression that fits in 1.4
+  seconds on a laptop took 25 minutes. The app sizes its thread pools to the container's CPU quota, and the
+  Blueprint sets `N_JOBS=1` in case the quota is not visible (`/readyz` reports the value in use).
+- **A lighter search.** The Critic reviews the best 2 candidates with one revision round (`CRITIC_TOP_K=2`,
+  `CRITIC_ROUNDS=1`), and scikit-learn's gradient boosting is left out (`EXCLUDE_MODELS`) because it costs
+  about 13 times as much as XGBoost, which still covers boosted trees with LightGBM. The candidate factory
+  lists the exclusion among its reasons, and the Critic's opening event states its budget. On a 10,000-row
+  e-commerce file these settings cut the work from 247 to 29 CPU-seconds.
+
+Keep the run page open: it checks the run once a minute, which also keeps the instance awake until the run
+ends. If the instance restarts anyway, the page says the run is gone instead of waiting.
 
 The free Gemini tier allows about 20 requests per model per day and one analysis makes about 8, so the model
 chain (`GEMINI_FALLBACK_MODELS`) spreads calls across Flash models and falls back to template narration when
@@ -91,8 +106,8 @@ both choices are logged and evaluated on the held-out rows.
 
 All settings are environment variables (see `.env.example`): `GOOGLE_API_KEY`, `GEMINI_MODEL`, `LLM_MODE`
 (`auto`, `gemini`, `offline`), `ALLOWED_ORIGINS`, `MAX_UPLOAD_MB`, `MAX_CONCURRENT_RUNS`,
-`DATA_RETENTION_HOURS`, `DAILY_CALL_BUDGET`, `BLOCKER_POLICY`, `FAST_MODE`, `STATIC_PLOTS`,
-`NEXT_PUBLIC_API_URL`. Run the API with **one worker**: run threads and their pauses belong to one process.
+`DATA_RETENTION_HOURS`, `DAILY_CALL_BUDGET`, `BLOCKER_POLICY`, `FAST_MODE`, `STATIC_PLOTS`, `MAX_ROWS`,
+`N_JOBS`, `CRITIC_TOP_K`, `CRITIC_ROUNDS`, `EXCLUDE_MODELS`, `NEXT_PUBLIC_API_URL`. Run the API with **one worker**: run threads and their pauses belong to one process.
 
 ## Evaluation
 

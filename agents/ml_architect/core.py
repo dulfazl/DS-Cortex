@@ -8,6 +8,7 @@ import copy
 import pandas as pd
 
 from agents.base import BaseAgent, cv_claim
+from app.config import get_settings
 from app.schemas import CandidatePipeline, Check, Claim, CVScores, DebatePosition, Objection, StatisticalProfile, TaskPlan
 from tools import pipeline_core as pc
 from tools import sklearn_tools as sk
@@ -32,9 +33,10 @@ class MLArchitectAgent(BaseAgent):
             cluster_choice, _ = self.ctx.tool("sklearn_tools.choose_clusters", sk.choose_clusters, {"rows": len(df_train)},
                                               df_train, task, self.ctx.seed)
         n_feat = len(pc.feature_columns(df_train, task)["numeric"]) + len(pc.feature_columns(df_train, task)["categorical"])
+        exclude = get_settings().exclude_models
         fac, ev_fac = self.ctx.tool("sklearn_tools.candidate_specs", sk.candidate_specs,
-                                    {"task": plan.task_family, "signals": signals},
-                                    task, signals, len(df_train), n_feat, self.ctx.fast, cluster_choice)
+                                    {"task": plan.task_family, "signals": signals, "exclude": list(exclude)},
+                                    task, signals, len(df_train), n_feat, self.ctx.fast, cluster_choice, exclude)
         specs = list(fac["specs"])
         for i, m in enumerate(memory_suggestions or []):
             spec = copy.deepcopy(m["spec"])

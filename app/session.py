@@ -6,11 +6,11 @@ import uuid
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from app import db
 from app.config import get_settings
-from app.schemas import CandidatePipeline, DataAuditReport, DebateOutcome, StatisticalProfile, TaskPlan
+from app.schemas import CandidatePipeline, DataAuditReport, DebateOutcome, Model, StatisticalProfile, TaskPlan
 from tools.common import now_iso
 
 RunMode = Literal["autopilot", "review"]
@@ -18,7 +18,7 @@ Status = Literal["created", "queued", "running", "awaiting_approval", "awaiting_
                  "blocked", "completed", "failed", "interrupted"]
 
 
-class RunFlags(BaseModel):
+class RunFlags(Model):
     """Which pillars are switched on. The eval ablation flips these."""
     critic: bool = True
     debate: bool = True
@@ -31,7 +31,7 @@ class RunFlags(BaseModel):
     force_shap_failure: bool = False    # tests: exercise the permutation-importance fallback
 
 
-class Session(BaseModel):
+class Session(Model):
     id: str
     created_at: str
     updated_at: str

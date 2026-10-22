@@ -43,6 +43,9 @@ class Settings:
     blocker_policy: str = "ask"  # ask | drop | keep  (non-interactive runs use drop)
     static_plots: bool = True    # PNG copies of plots in the bundle (needs Chrome for Kaleido)
     max_rows: int = 0            # 0 = no cap; small hosts sample larger files down (logged in the ledger)
+    critic_top_k: int = 0        # candidates the Critic reviews; 0 = 3 in fast mode, else 4
+    critic_rounds: int = 3       # revision rounds per reviewed candidate
+    exclude_models: tuple[str, ...] = ()   # models a small host skips (logged in the candidate factory's reasons)
     extra: dict = field(default_factory=dict)
 
     @property
@@ -82,7 +85,10 @@ def get_settings() -> Settings:
         fast=os.getenv("FAST_MODE", "0") == "1",
         blocker_policy=os.getenv("BLOCKER_POLICY", "ask"),
         static_plots=os.getenv("STATIC_PLOTS", "1") == "1",
-        max_rows=int(os.getenv("MAX_ROWS", "0")),
+        max_rows=int(os.getenv("MAX_ROWS") or 0),
+        critic_top_k=int(os.getenv("CRITIC_TOP_K") or 0),
+        critic_rounds=int(os.getenv("CRITIC_ROUNDS") or 3),
+        exclude_models=tuple(m.strip() for m in os.getenv("EXCLUDE_MODELS", "").split(",") if m.strip()),
     )
     for d in (s.data_dir, s.log_dir, s.upload_dir, s.sessions_dir, s.db_path.parent):
         d.mkdir(parents=True, exist_ok=True)

@@ -9,6 +9,7 @@ each cross-validation fold."""
 from __future__ import annotations
 
 import math
+import os
 import time
 import warnings
 from typing import Any
@@ -44,6 +45,10 @@ from sklearn.preprocessing import OneHotEncoder, PowerTransformer, StandardScale
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Threads per model: N_JOBS, else the CPUs joblib finds (it reads the container's CPU quota; -1 in
+# LightGBM and XGBoost means one thread per host core, which stalls a container limited to a fraction of one)
+N_JOBS = int(os.getenv("N_JOBS") or 0) or __import__("joblib").cpu_count()
 
 LOWER_IS_BETTER = {"rmse", "mae", "smape", "davies_bouldin"}
 TREE_MODELS = {"random_forest", "gradient_boosting", "xgboost", "lightgbm", "decision_tree", "isolation_forest",
@@ -262,8 +267,10 @@ def build_preprocessor(prep: dict, cols: dict[str, list[str]], supervised: bool,
                            ("freq_enc", FrequencyEncoder())])
         transformers.append(("high_card", hc, cols["high_cardinality"]))
     if cols["datetime"]:
-        transformers.append(("date", Pipeline([("parts", DateFeatures()), ("impute", SimpleImputer(strategy="median"))]),
-                             cols["datetime"]))
+        date_steps = [("parts", DateFeatures()), ("impute", SimpleImputer(strategy="median"))]
+        if prep.get("scale"):   # an unscaled year (about 2000) shrinks saga's step size until it barely moves
+            date_steps.append(("scale", StandardScaler()))
+        transformers.append(("date", Pipeline(date_steps), cols["datetime"]))
     return ColumnTransformer(transformers, remainder="drop", verbose_feature_names_out=False)
 
 
@@ -314,7 +321,7 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
         if m == "random_forest":
             return RandomForestClassifier(n_estimators=p.get("n_estimators", 200), max_depth=p.get("max_depth"),
                                           min_samples_leaf=p.get("min_samples_leaf", 1), max_features=p.get("max_features", "sqrt"),
-                                          class_weight=cw, n_jobs=-1, random_state=seed)
+                                          class_weight=cw, n_jobs=N_JOBS, random_state=seed)
         if m == "gradient_boosting":
             return HistGradientBoostingClassifier(learning_rate=p.get("learning_rate", 0.08), max_depth=p.get("max_depth"),
                                                   max_iter=p.get("max_iter", 200), min_samples_leaf=p.get("min_samples_leaf", 20),
@@ -326,14 +333,14 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
             return XGBClassifier(n_estimators=p.get("n_estimators", 300), max_depth=p.get("max_depth", 4),
                                  learning_rate=p.get("learning_rate", 0.08), subsample=p.get("subsample", 0.9),
                                  colsample_bytree=p.get("colsample_bytree", 0.9), min_child_weight=p.get("min_child_weight", 1),
-                                 reg_lambda=p.get("reg_lambda", 1.0), tree_method="hist", n_jobs=-1, random_state=seed,
+                                 reg_lambda=p.get("reg_lambda", 1.0), tree_method="hist", n_jobs=N_JOBS, random_state=seed,
                                  eval_metric="logloss", verbosity=0, **kw)
         if m == "lightgbm":
             from lightgbm import LGBMClassifier
             return LGBMClassifier(n_estimators=p.get("n_estimators", 300), learning_rate=p.get("learning_rate", 0.05),
                                   num_leaves=p.get("num_leaves", 31), min_child_samples=p.get("min_child_samples", 20),
                                   subsample=p.get("subsample", 0.9), subsample_freq=1, colsample_bytree=p.get("colsample_bytree", 0.9),
-                                  reg_lambda=p.get("reg_lambda", 0.0), class_weight=cw, random_state=seed, n_jobs=-1, verbose=-1)
+                                  reg_lambda=p.get("reg_lambda", 0.0), class_weight=cw, random_state=seed, n_jobs=N_JOBS, verbose=-1)
     if fam in ("regression", "offline_rl"):
         from sklearn.dummy import DummyRegressor
         from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
@@ -353,7 +360,7 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
         if m == "random_forest":
             return RandomForestRegressor(n_estimators=p.get("n_estimators", 200), max_depth=p.get("max_depth"),
                                          min_samples_leaf=p.get("min_samples_leaf", 1), max_features=p.get("max_features", 1.0),
-                                         n_jobs=-1, random_state=seed)
+                                         n_jobs=N_JOBS, random_state=seed)
         if m == "gradient_boosting":
             return HistGradientBoostingRegressor(learning_rate=p.get("learning_rate", 0.08), max_depth=p.get("max_depth"),
                                                  max_iter=p.get("max_iter", 200), min_samples_leaf=p.get("min_samples_leaf", 20),
@@ -363,13 +370,13 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
             return XGBRegressor(n_estimators=p.get("n_estimators", 300), max_depth=p.get("max_depth", 4),
                                 learning_rate=p.get("learning_rate", 0.08), subsample=p.get("subsample", 0.9),
                                 colsample_bytree=p.get("colsample_bytree", 0.9), min_child_weight=p.get("min_child_weight", 1),
-                                reg_lambda=p.get("reg_lambda", 1.0), tree_method="hist", n_jobs=-1, random_state=seed, verbosity=0)
+                                reg_lambda=p.get("reg_lambda", 1.0), tree_method="hist", n_jobs=N_JOBS, random_state=seed, verbosity=0)
         if m == "lightgbm":
             from lightgbm import LGBMRegressor
             return LGBMRegressor(n_estimators=p.get("n_estimators", 300), learning_rate=p.get("learning_rate", 0.05),
                                  num_leaves=p.get("num_leaves", 31), min_child_samples=p.get("min_child_samples", 20),
                                  subsample=p.get("subsample", 0.9), subsample_freq=1, colsample_bytree=p.get("colsample_bytree", 0.9),
-                                 reg_lambda=p.get("reg_lambda", 0.0), random_state=seed, n_jobs=-1, verbose=-1)
+                                 reg_lambda=p.get("reg_lambda", 0.0), random_state=seed, n_jobs=N_JOBS, verbose=-1)
     if fam == "clustering":
         from sklearn.cluster import DBSCAN, AgglomerativeClustering, KMeans
         from sklearn.mixture import GaussianMixture
@@ -388,7 +395,7 @@ def make_model(spec: dict, task: dict, seed: int, n_classes: int = 2, pos_weight
         from sklearn.neighbors import LocalOutlierFactor
         from sklearn.svm import OneClassSVM
         if m == "isolation_forest":
-            return IsolationForest(n_estimators=p.get("n_estimators", 200), contamination="auto", random_state=seed, n_jobs=-1)
+            return IsolationForest(n_estimators=p.get("n_estimators", 200), contamination="auto", random_state=seed, n_jobs=N_JOBS)
         if m == "lof":
             return LocalOutlierFactor(n_neighbors=p.get("n_neighbors", 20), novelty=True)
         if m == "ocsvm":
@@ -460,7 +467,10 @@ def supervised_scores(metrics: list[str], y_true, y_pred, proba, classes: np.nda
                     onehot = np.eye(len(classes))[y_true]
                     out[m] = average_precision_score(onehot, proba, average="macro")
             elif m == "recall_at_precision":
-                out[m] = recall_at_precision(y_true == pos, proba[:, pos]) if len(classes) == 2 else float("nan")
+                if len(classes) == 2:
+                    out[m] = recall_at_precision(y_true == pos, proba[:, pos])
+                else:   # one-vs-rest, averaged over classes like pr_auc above
+                    out[m] = float(np.mean([recall_at_precision(y_true == j, proba[:, j]) for j in range(len(classes))]))
             elif m == "rmse":
                 out[m] = math.sqrt(mean_squared_error(y_true, y_pred))
             elif m == "mae":

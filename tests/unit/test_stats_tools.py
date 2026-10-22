@@ -79,3 +79,19 @@ def test_fingerprint_fixed_length_and_distance(df):
     f3 = dataset_fingerprint(df, "regression", "c", None, 0.3, 4.0)
     assert len(f1["vector"]) == 12
     assert fingerprint_distance(f1["vector"], f2["vector"]) < fingerprint_distance(f1["vector"], f3["vector"])
+
+
+def test_label_noise_on_a_capped_sample_reports_file_rows():
+    rng = np.random.default_rng(0)
+    n = 3000
+    x = rng.normal(size=n)
+    y = np.where(x > 0, "a", "b")
+    flipped = rng.choice(n, 60, replace=False)
+    y[flipped] = np.where(y[flipped] == "a", "b", "a")
+    df = pd.DataFrame({"x": x, "noise": rng.normal(size=n), "y": y})
+    full = stt.label_noise_report(df, "y", seed=0)
+    capped = stt.label_noise_report(df, "y", seed=0, max_rows=1000)
+    assert full["rows_checked"] == n and capped["rows_checked"] == 1000
+    assert 0.01 < capped["estimated_noise_rate"] < 0.05     # 2% of labels were flipped
+    found = set(capped["suspect_rows"])
+    assert found and len(found & set(flipped.tolist())) / len(found) > 0.8   # row numbers refer to the file

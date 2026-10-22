@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from agents.base import BaseAgent, slice_evidence
+from app.config import get_settings
 from app.schemas import AuditFinding, CleaningAction, DataAuditReport, Evidence, TaskPlan
 from tools import pandas_tools as pt
 from tools import stats_tools as stt
@@ -173,11 +174,14 @@ class DataAuditorAgent(BaseAgent):
 
         # ---- label noise (classification only)
         if fam == "classification" and target and len(df) >= 50:
-            ln, ev = self.ctx.tool("stats_tools.label_noise_report", stt.label_noise_report, {"target": target}, df, target, self.ctx.seed)
+            cap = get_settings().max_rows
+            ln, ev = self.ctx.tool("stats_tools.label_noise_report", stt.label_noise_report, {"target": target, "max_rows": cap},
+                                   df, target, self.ctx.seed, cap)
             rate = ln.get("estimated_noise_rate")
             if rate is not None and rate >= 0.05:
                 add(target, "label_noise", "medium", "review the suspect rows; no automatic relabelling",
-                    f"out-of-fold predictions confidently disagree with {ln['suspect_count']} labels ({rate:.1%})",
+                    f"out-of-fold predictions confidently disagree with {ln['suspect_count']} labels ({rate:.1%})"
+                    + (f" in a sample of {ln['rows_checked']} rows" if ln.get("rows_checked", len(df)) < len(df) else ""),
                     clip01(rate / 0.2), "rule", ev, ln)
 
         findings.sort(key=lambda f: SEVERITY_ORDER[f.severity])

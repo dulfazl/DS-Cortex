@@ -93,7 +93,8 @@ def create_app() -> FastAPI:
         except Exception:  # noqa: BLE001
             ok_db = False
         st = get_settings()
-        body = {"db": ok_db, "llm_key": bool(st.google_api_key), "llm_mode": st.llm_mode}
+        from tools.pipeline_core import N_JOBS
+        body = {"db": ok_db, "llm_key": bool(st.google_api_key), "llm_mode": st.llm_mode, "threads": N_JOBS}
         return JSONResponse(body, status_code=200 if ok_db else 503)
 
     return app

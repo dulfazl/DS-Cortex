@@ -349,8 +349,9 @@ class PipelineRun:
                                        self.s.memory.get("suggestions") or [])}
         target_type = self._target_type()
         self.s.candidates = critic_loop(self.ctx, arch, PipelineCriticAgent(self.ctx), self.s.candidates, self.train_df(),
-                                        self.plan, baseline, top_feature, top_k=3 if self.settings.fast else 4,
-                                        memory_suggestions=mem, target_type=target_type)
+                                        self.plan, baseline, top_feature,
+                                        top_k=self.settings.critic_top_k or (3 if self.settings.fast else 4),
+                                        max_rounds=self.settings.critic_rounds, memory_suggestions=mem, target_type=target_type)
         if mem:
             from memory.fingerprint_store import log_memory_review
             log_memory_review(self)

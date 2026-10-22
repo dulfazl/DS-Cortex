@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 TaskFamily = Literal["classification", "regression", "clustering", "anomaly_detection", "time_series", "offline_rl"]
 Severity = Literal["low", "medium", "high", "blocker"]
@@ -11,19 +11,25 @@ ConfidenceMethod = Literal["cv_variance", "bootstrap", "effect_size", "rule", "l
 DecidedBy = Literal["agent_rule", "supervisor", "client", "system"]
 
 
+class Model(BaseModel):
+    """Base of every stored model. A score can be NaN (a metric undefined for some data); JSON has no NaN,
+    and pydantic's default writes null, which a float field then rejects when the session is read back."""
+    model_config = ConfigDict(ser_json_inf_nan="constants")
+
+
 class EvidenceError(ValueError):
     """A recommendation broke the evidence rule."""
 
 
 # --------------------------------------------------------------------------- evidence
-class Evidence(BaseModel):
+class Evidence(Model):
     tool: str                       # e.g. "stats_tools.vif_report"
     inputs: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any]          # the real executed output
     run_id: str
 
 
-class Check(BaseModel):
+class Check(Model):
     """One machine-checkable condition linking a claim to a logged tool result."""
     run_id: str
     path: str                       # dotted path into the logged result, e.g. "candidates.rf.primary_mean"
@@ -32,7 +38,7 @@ class Check(BaseModel):
     tol: float = 1e-3
 
 
-class Claim(BaseModel):
+class Claim(Model):
     text: str
     kind: str = "general"           # cv, validity, interpretability, cost, practice, llm
     evidence: list[Evidence] = Field(default_factory=list)
@@ -42,7 +48,7 @@ class Claim(BaseModel):
     verify_note: str | None = None
 
 
-class Recommendation(BaseModel):
+class Recommendation(Model):
     agent: str
     decision_point: str             # "imputation", "model_choice", ...
     recommendation: str
@@ -54,7 +60,7 @@ class Recommendation(BaseModel):
     claims: list[Claim] = Field(default_factory=list)
 
 
-class LedgerEntry(BaseModel):
+class LedgerEntry(Model):
     step: int
     decision_point: str
     options_considered: list[str]
@@ -81,7 +87,7 @@ def validate_recommendation(rec: Recommendation, computed_available: bool = True
 
 
 # --------------------------------------------------------------------------- router
-class TaskPlan(BaseModel):
+class TaskPlan(Model):
     task_family: TaskFamily
     target: str | None = None
     metric: str
@@ -100,7 +106,7 @@ class TaskPlan(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list)
 
 
-class ClarifyingQuestion(BaseModel):
+class ClarifyingQuestion(Model):
     question: str
     options: list[str]
     reason: str
@@ -108,7 +114,7 @@ class ClarifyingQuestion(BaseModel):
 
 
 # --------------------------------------------------------------------------- auditor
-class AuditFinding(BaseModel):
+class AuditFinding(Model):
     column: str | None
     issue_type: str
     severity: Severity
@@ -119,7 +125,7 @@ class AuditFinding(BaseModel):
     evidence: list[Evidence]
 
 
-class CleaningAction(BaseModel):
+class CleaningAction(Model):
     action: str                     # drop_column, drop_duplicates, recode_case, strip_whitespace, ...
     column: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
@@ -128,7 +134,7 @@ class CleaningAction(BaseModel):
     enabled: bool = True
 
 
-class DataAuditReport(BaseModel):
+class DataAuditReport(Model):
     findings: list[AuditFinding]
     cleaning_plan: list[CleaningAction]
     blockers: list[str] = Field(default_factory=list)
@@ -136,7 +142,7 @@ class DataAuditReport(BaseModel):
 
 
 # --------------------------------------------------------------------------- statistician
-class FeatureProfile(BaseModel):
+class FeatureProfile(Model):
     name: str
     kind: str
     mean: float | None = None
@@ -152,7 +158,7 @@ class FeatureProfile(BaseModel):
     p_value: float | None = None
 
 
-class StatFlag(BaseModel):
+class StatFlag(Model):
     issue: str
     features: list[str]
     detail: str
@@ -162,7 +168,7 @@ class StatFlag(BaseModel):
     evidence: list[Evidence]
 
 
-class StatisticalProfile(BaseModel):
+class StatisticalProfile(Model):
     features: list[FeatureProfile]
     flags: list[StatFlag]
     guidance: list[str]
@@ -173,7 +179,7 @@ class StatisticalProfile(BaseModel):
 
 
 # --------------------------------------------------------------------------- modelling
-class CVScores(BaseModel):
+class CVScores(Model):
     primary: str
     primary_mean: float
     primary_std: float
@@ -185,7 +191,7 @@ class CVScores(BaseModel):
     baseline_mean: float | None = None
 
 
-class Objection(BaseModel):
+class Objection(Model):
     check: str
     severity: Severity
     message: str
@@ -193,7 +199,7 @@ class Objection(BaseModel):
     resolved: bool = False
 
 
-class CandidatePipeline(BaseModel):
+class CandidatePipeline(Model):
     id: str
     name: str
     model: str
@@ -209,7 +215,7 @@ class CandidatePipeline(BaseModel):
     eval_run_id: str | None = None
 
 
-class DebatePosition(BaseModel):
+class DebatePosition(Model):
     agent: str
     preferred: str
     reasons: list[Claim]
@@ -219,7 +225,7 @@ class DebatePosition(BaseModel):
     excluded: bool = False
 
 
-class DebateTurn(BaseModel):
+class DebateTurn(Model):
     round: int
     agent: str
     kind: Literal["position", "verification", "conflict", "resolution", "rebuttal", "decision", "note"]
@@ -228,7 +234,7 @@ class DebateTurn(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
-class DebateOutcome(BaseModel):
+class DebateOutcome(Model):
     chosen: str
     runner_up: str | None
     rule: str

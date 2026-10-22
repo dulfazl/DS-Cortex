@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { useRunStore } from "@/lib/store";
 import type { LedgerEntry, Results, RunEvent, SessionSummary } from "@/lib/types";
 import { useEventStream } from "@/lib/useEventStream";
@@ -30,6 +30,7 @@ export function RunView({ id }: { id: string }) {
   const [session, setSession] = useState<SessionSummary | null>(null);
   const [results, setResults] = useState<Results | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [lost, setLost] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [showTools, setShowTools] = useState(false);
@@ -50,7 +51,11 @@ export function RunView({ id }: { id: string }) {
           if (r) setResults(r);
           if (led) setPartial(led);
         })
-        .catch((e) => setLoadError(e instanceof Error ? e.message : String(e))),
+        .catch((e) => {
+          // 404 after the run was loaded: the server restarted without a disk and the run is gone
+          if (e instanceof ApiError && e.status === 404) setLost(true);
+          else setLoadError(e instanceof Error ? e.message : String(e));
+        }),
     [id],
   );
 
@@ -80,7 +85,20 @@ export function RunView({ id }: { id: string }) {
     },
     [refresh],
   );
-  useEventStream(id, { onEvent, enabled: !!session && session.status !== "completed" });
+  const onDrop = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(refresh, 250);
+  }, [refresh]);
+  useEventStream(id, { onEvent, onDrop, enabled: !!session && session.status !== "completed" && !lost });
+
+  // While the run works, re-read it every minute: this catches a status change the stream missed, and on a
+  // free host that sleeps after 15 minutes without incoming requests it keeps the server awake until the run ends.
+  const working = !!session && ["running", "queued"].includes(session.status) && !lost;
+  useEffect(() => {
+    if (!working) return;
+    const t = setInterval(refresh, 60_000);
+    return () => clearInterval(t);
+  }, [working, refresh]);
 
   const start = async () => {
     setStarting(true);
@@ -111,6 +129,19 @@ export function RunView({ id }: { id: string }) {
         <Skeleton className="h-10 w-1/2" />
         <Skeleton className="h-64 w-full" />
       </div>
+    );
+
+  if (lost)
+    return (
+      <Banner tone="bad" title="This run is no longer on the server">
+        The server restarted while “{session.file_name}” was being analysed. On the free hosting plan the server has no disk, so a
+        restart erases runs in progress. Upload the file again to start a new run.
+        <p className="mt-2">
+          <button className="btn btn-primary" onClick={() => router.push("/")}>
+            New run
+          </button>
+        </p>
+      </Banner>
     );
 
   const s = session;

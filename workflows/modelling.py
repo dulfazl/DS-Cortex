@@ -24,7 +24,7 @@ def critic_loop(ctx: AgentContext, architect: MLArchitectAgent, critic: Pipeline
                 top_feature: str | None = None, top_k: int = 4, max_rounds: int = MAX_ROUNDS,
                 memory_suggestions: dict[str, dict] | None = None, target_type: str | None = None) -> list[CandidatePipeline]:
     """Returns all candidates with statuses set; survivors have status 'active'."""
-    critic.started(f"reviewing the top {top_k} candidates")
+    critic.started(f"reviewing the top {top_k} candidates, up to {max_rounds} revision round{'s' if max_rounds != 1 else ''}")
     ranked = MLArchitectAgent.rank(cands, plan.metric)
     reviewed = ranked[:top_k]
     for c in ranked[top_k:]:

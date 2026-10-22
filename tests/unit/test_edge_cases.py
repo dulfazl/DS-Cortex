@@ -133,3 +133,40 @@ def test_row_cap_samples_and_logs(tmp_path, monkeypatch):
     assert s.stage_outputs["clean"]["rows"] == 120
     assert any(e.decision_point == "row_cap" for e in Ledger(s.id).entries())
     assert any(a.action == "sample_rows" for a in s.audit_report.cleaning_plan)   # so the exported script reproduces it
+
+
+def test_multiclass_imbalanced_target_with_dates_completes(tmp_path):
+    """The shape of a real upload that stalled: four classes (one at 50%), a date column from a single year,
+    and name-like categoricals. It is routed as imbalanced classification, whose secondary metric used to be NaN
+    for more than two classes, and the unscaled year made the L1 logistic regression crawl."""
+    rng = np.random.default_rng(3)
+    n = 400
+    df = pd.DataFrame({"placed_at": pd.date_range("2026-01-01", periods=n, freq="37min").strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       "first": rng.choice(list("ABCDEFGHIJ"), n), "country": rng.choice(["AR", "BR", "CA", "FR"], n),
+                       "items": rng.integers(1, 6, n), "total": rng.integers(500, 60000, n),
+                       "status": rng.choice(["paid", "refunded", "cancelled", "shipped"], n, p=[0.5, 0.17, 0.17, 0.16])})
+    s = _run(tmp_path, df, "Predict status")
+    assert s.status == "completed", s.error
+    assert s.task_plan.metric == "pr_auc"
+    assert store.get(s.id).status == "completed"   # the stored session loads
+    for c in s.candidates:
+        assert all(v == v for v in c.cv.secondary.values()), (c.id, c.cv.secondary)   # no NaN
+
+
+def test_date_parts_are_scaled_with_numeric_columns():
+    df = pd.DataFrame({"when": pd.to_datetime(["2026-01-01", "2026-03-05", "2026-07-09", "2026-11-30"] * 5),
+                       "x": np.arange(20.0)})
+    cols = {"numeric": ["x"], "categorical": [], "high_cardinality": [], "datetime": ["when"], "dropped": []}
+    Xt = pc.build_preprocessor({"scale": True}, cols, True, 0).fit_transform(df)
+    assert np.abs(np.asarray(Xt, dtype=float)).max() < 10   # no raw year (2026) left for saga to crawl over
+
+
+def test_excluded_models_are_skipped_and_logged():
+    from tools import sklearn_tools as sk
+    plan = {"task_family": "classification", "target": "y", "metric": "f1_macro"}
+    out = sk.candidate_specs(plan, {}, 2000, 5, True, None, ("gradient_boosting",))
+    models = [s["model"] for s in out["specs"]]
+    assert "gradient_boosting" not in models and len(models) >= 2
+    assert any("EXCLUDE_MODELS" in r and "gradient_boosting" in r for r in out["conditioning"])
+    everything = tuple({s["model"] for s in sk.candidate_specs(plan, {}, 2000, 5, True)["specs"]})
+    assert len(sk.candidate_specs(plan, {}, 2000, 5, True, None, everything)["specs"]) >= 2   # never left with nothing

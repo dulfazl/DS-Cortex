@@ -213,15 +213,26 @@ def correlation_report(df: pd.DataFrame, cols: list[str], top: int = 10) -> dict
                      "matrix": {"columns": cols, "values": pear.round(3).values.tolist()}})
 
 
-def label_noise_report(df: pd.DataFrame, target: str, seed: int = 0) -> dict:
-    """Confident-learning-lite: rows whose out-of-fold prediction confidently disagrees with the label."""
+def label_noise_report(df: pd.DataFrame, target: str, seed: int = 0, max_rows: int = 0) -> dict:
+    """Confident-learning-lite: rows whose out-of-fold prediction confidently disagrees with the label.
+    With max_rows (the host's row cap) the check runs on a stratified sample of that size; suspect rows are
+    reported by their row number in the file either way."""
     from sklearn.compose import ColumnTransformer
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.impute import SimpleImputer
     from sklearn.model_selection import StratifiedKFold, cross_val_predict
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OrdinalEncoder
-    d = df[df[target].notna()].reset_index(drop=True)
+    d = df.reset_index(drop=True)
+    d = d[d[target].notna()]
+    if max_rows and len(d) > max_rows:
+        from sklearn.model_selection import train_test_split
+        counts_all = d[target].astype(str).value_counts()
+        strat = d[target].astype(str) if counts_all.min() >= 2 else None
+        d, _ = train_test_split(d, train_size=max_rows, stratify=strat, random_state=seed)
+        d = d.sort_index()
+    rows = d.index.to_numpy()
+    d = d.reset_index(drop=True)
     y = pd.factorize(d[target].astype(str), sort=True)[0]
     counts = np.bincount(y)
     if len(counts) < 2 or counts.min() < 5 or len(d) < 50:
@@ -244,5 +255,6 @@ def label_noise_report(df: pd.DataFrame, target: str, seed: int = 0) -> dict:
     conf_other = other[np.arange(len(y)), best_other]
     suspect = (conf_other >= np.maximum(thresholds[best_other], 0.8)) & (conf_other > given)
     return jsonable({"estimated_noise_rate": float(suspect.mean()), "suspect_count": int(suspect.sum()),
-                     "suspect_rows": np.where(suspect)[0][:50].tolist(), "class_thresholds": thresholds.tolist(),
+                     "suspect_rows": rows[np.where(suspect)[0][:50]].tolist(), "class_thresholds": thresholds.tolist(),
+                     "rows_checked": int(len(d)),
                      "method": "out-of-fold gradient boosting, per-class confidence thresholds"})

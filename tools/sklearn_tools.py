@@ -26,8 +26,9 @@ def _prep(signals: dict, model: str, plan: dict) -> dict:
 
 
 def candidate_specs(plan: dict, signals: dict, n_rows: int, n_features: int, fast: bool = False,
-                    cluster_choice: dict | None = None) -> dict:
-    """One list of candidate specs per task family, conditioned on upstream findings."""
+                    cluster_choice: dict | None = None, exclude: tuple[str, ...] = ()) -> dict:
+    """One list of candidate specs per task family, conditioned on upstream findings. `exclude` lists models
+    this host should not fit (EXCLUDE_MODELS); at least two candidates are always kept."""
     fam = plan["task_family"]
     small = n_rows < 300 or signals.get("small_sample")
     n_est = 120 if fast else 250
@@ -104,6 +105,10 @@ def candidate_specs(plan: dict, signals: dict, n_rows: int, n_features: int, fas
         add("greedy_ridge", {"alpha": 1.0}, "direct-method policy from a linear reward model, valued by IPW")
         add("greedy_rf", {"n_estimators": n_est, "min_samples_leaf": 5}, "policy from a random-forest reward model")
         add("greedy_gbm", {"max_iter": 150}, "policy from a gradient-boosting reward model")
+    kept = [s for s in specs if s["model"] not in exclude]
+    if len(kept) >= 2 and len(kept) < len(specs):
+        reasons.append("not fitted on this host (EXCLUDE_MODELS): " + ", ".join(sorted({s["model"] for s in specs} - {s["model"] for s in kept})))
+        specs = kept
     for i, s in enumerate(specs):
         s["id"] = f"c{i + 1}_{s['model']}"
         s["name"] = s["model"].replace("_", " ")
