@@ -24,7 +24,8 @@ tool. Without a key the system runs fully offline with template narration.
 docker compose up --build
 ```
 
-Then open http://localhost:3000. To enable Gemini, copy `.env.example` to `.env` and set `GOOGLE_API_KEY`
+Then open http://localhost:3000. The API image is about 3 GB, mostly Chromium for PNG copies of the plots;
+`WITH_CHROMIUM=0 docker compose up --build` builds a much smaller one without them. To enable Gemini, copy `.env.example` to `.env` and set `GOOGLE_API_KEY`
 (create it in Google AI Studio in a Cloud project with billing disabled; enabling billing removes the free tier).
 
 ### Local development

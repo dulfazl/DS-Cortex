@@ -2,7 +2,11 @@
 # Then open http://localhost:3000. Put GOOGLE_API_KEY in .env to enable Gemini (optional).
 services:
   api:
-    build: .
+    build:
+      context: .
+      args:
+        # 0 leaves Chromium out (a much smaller image, but no PNG copies of the plots in the export)
+        WITH_CHROMIUM: ${WITH_CHROMIUM:-1}
     env_file:
       - path: .env
         required: false
