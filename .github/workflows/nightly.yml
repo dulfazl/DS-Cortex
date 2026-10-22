@@ -12,6 +12,7 @@ jobs:
       CV_REPEATS: "1"
       STATIC_PLOTS: "0"
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      RUN_LIVE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

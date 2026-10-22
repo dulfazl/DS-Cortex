@@ -4,7 +4,9 @@ import os
 
 import pytest
 
-pytestmark = pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="needs GOOGLE_API_KEY")
+# opt-in: each run spends about 8 of the free tier's ~20 daily requests per model
+pytestmark = pytest.mark.skipif(not (os.getenv("GOOGLE_API_KEY") and os.getenv("RUN_LIVE") == "1"),
+                                reason="needs GOOGLE_API_KEY and RUN_LIVE=1")
 
 
 def test_one_real_run(fixtures_dir, monkeypatch):

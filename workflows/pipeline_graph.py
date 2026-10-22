@@ -175,7 +175,10 @@ class PipelineRun:
         except Exception as e:  # noqa: BLE001 - any failure ends in a readable message and keeps the ledger
             self._fail(f"{type(e).__name__} in stage '{s.current_stage}': {e}", traceback.format_exc(limit=4))
         finally:
-            u = s.usage or {}
+            # Everything else was saved as it happened. Re-read before this last write: a client may have
+            # answered the pause in the meantime, and their answer must not be overwritten by our stale copy.
+            fresh = store.get(s.id) or s
+            u = fresh.usage or {}
             for k, v in self.llm.usage.items():
                 if isinstance(v, dict):     # calls per model
                     merged = dict(u.get(k) or {})
@@ -186,8 +189,9 @@ class PipelineRun:
                     u[k] = u.get(k, 0) + v
             u["seconds"] = round(u.get("seconds", 0) + time.perf_counter() - t0, 2)
             u["llm"] = self.llm.name
-            s.usage = u
-            self.save()
+            fresh.usage = u
+            store.save(fresh)
+            self.s = s = fresh
         return s
 
     def _fail(self, message: str, tb: str | None = None) -> None:

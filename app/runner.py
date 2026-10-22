@@ -18,6 +18,7 @@ class Runner:
         self._lock = threading.Lock()
         self._active: dict[str, threading.Thread] = {}
         self._queue: list[str] = []
+        self._restart: dict[str, dict] = {}
 
     def is_active(self, sid: str) -> bool:
         with self._lock:
@@ -30,6 +31,9 @@ class Runner:
     def start(self, sid: str, **run_kwargs) -> bool:
         with self._lock:
             if sid in self._active:
+                # the previous thread may be finishing after a pause that has just been answered:
+                # remember the request and start again when it exits
+                self._restart[sid] = run_kwargs
                 return False
             t = threading.Thread(target=self._work, args=(sid, run_kwargs), daemon=True, name=f"run-{sid[:8]}")
             self._active[sid] = t
@@ -66,6 +70,11 @@ class Runner:
                 self._active.pop(sid, None)
                 if sid in self._queue:
                     self._queue.remove(sid)
+                again = self._restart.pop(sid, None)
+            if again is not None:
+                s = store.get(sid)
+                if s and s.status not in ("completed", "failed") and not s.pending:
+                    self.start(sid, **again)
 
     def wait(self, sid: str, timeout: float = 600) -> None:
         """Block until the run thread for sid ends (tests and scripts)."""
