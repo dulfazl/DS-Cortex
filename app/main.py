@@ -80,7 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(api)
     app.include_router(replay_api)
 
-    @app.get("/healthz")
+    @app.api_route("/healthz", methods=["GET", "HEAD"])
     def healthz():
         return {"ok": True}
 
