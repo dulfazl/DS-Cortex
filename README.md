@@ -48,6 +48,23 @@ python -m scripts.run_chain tests/fixtures/classification.csv "Predict whether a
 
 Explore single agents interactively with the ADK web UI (needs a key): `PYTHONPATH=. adk web agents`.
 
+## Deploy on Render
+
+1. In Render, choose **New > Blueprint** and pick this repository. `render.yaml` creates two services:
+   `ds-cortex-api` (Docker) and `ds-cortex-web` (Node).
+2. Enter `GOOGLE_API_KEY` when Render asks (leave it empty to run offline).
+3. If Render gives the API a URL other than `https://ds-cortex-api.onrender.com`, set `NEXT_PUBLIC_API_URL` on
+   `ds-cortex-web` to that URL and redeploy the web service (the value is built into the page).
+
+Free instances have 512 MB of RAM, no persistent disk and sleep after 15 idle minutes, so the first request
+after a pause is slow and finished runs disappear on restart (the memory store is re-seeded from
+`memory/seed_fingerprints.json`). The Blueprint uses fast settings and one run at a time to fit; for larger
+CSVs choose a bigger plan and add a disk mounted at `/data`.
+
+The free Gemini tier allows about 20 requests per model per day and one analysis makes about 8, so the model
+chain (`GEMINI_FALLBACK_MODELS`) spreads calls across Flash models and falls back to template narration when
+all are used up.
+
 ## How a run works
 
 | Stage | Agent | What happens |

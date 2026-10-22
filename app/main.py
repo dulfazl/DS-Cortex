@@ -75,8 +75,8 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     s = get_settings()
     app = FastAPI(title="DS Cortex", version="1.0.0", lifespan=lifespan)
-    app.add_middleware(CORSMiddleware, allow_origins=list(s.allowed_origins), allow_credentials=False,
-                       allow_methods=["GET", "POST"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origins=list(s.allowed_origins), allow_origin_regex=s.allowed_origin_regex,
+                       allow_credentials=False, allow_methods=["GET", "POST"], allow_headers=["*"])
     app.include_router(api)
     app.include_router(replay_api)
 

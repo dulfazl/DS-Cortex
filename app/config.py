@@ -36,6 +36,7 @@ class Settings:
     data_retention_hours: int = 72
     daily_call_budget: int = 1000
     allowed_origins: tuple[str, ...] = ("http://localhost:3000",)
+    allowed_origin_regex: str | None = None
     cv_folds: int = 5
     cv_repeats: int = 3
     fast: bool = False  # fewer repeats / tuning trials (eval harness, tests)
@@ -74,6 +75,7 @@ def get_settings() -> Settings:
         data_retention_hours=int(os.getenv("DATA_RETENTION_HOURS", "72")),
         daily_call_budget=int(os.getenv("DAILY_CALL_BUDGET", "1000")),
         allowed_origins=origins,
+        allowed_origin_regex=os.getenv("ALLOWED_ORIGIN_REGEX") or None,
         cv_folds=int(os.getenv("CV_FOLDS", "5")),
         cv_repeats=int(os.getenv("CV_REPEATS", "3")),
         fast=os.getenv("FAST_MODE", "0") == "1",
