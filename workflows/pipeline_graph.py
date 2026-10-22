@@ -27,7 +27,7 @@ from app import events
 from app.config import get_settings, package_versions
 from app.ledger import Ledger
 from app.llm import BaseLLM, get_llm
-from app.schemas import ClarifyingQuestion, DataAuditReport, Recommendation, StatisticalProfile, TaskPlan
+from app.schemas import ClarifyingQuestion, CleaningAction, DataAuditReport, Recommendation, StatisticalProfile, TaskPlan
 from app.session import Session, store
 from tools import pipeline_core as pc
 from tools import sklearn_tools as sk
@@ -273,7 +273,23 @@ class PipelineRun:
                                 note=f"disabled: {sorted(map(str, disabled))}" if disabled else None)
 
     def stage_clean(self) -> None:
-        plan = [a.model_dump() for a in self.s.audit_report.cleaning_plan]
+        cap = self.settings.max_rows
+        rep = self.s.audit_report
+        if cap and len(self.raw_df()) > cap and not any(a.action == "sample_rows" for a in rep.cleaning_plan):
+            stratify = self.plan.target if self.plan.task_family in ("classification", "anomaly_detection") else None
+            rep.cleaning_plan.append(CleaningAction(
+                action="sample_rows", params={"n": cap, "seed": self.s.seed, "stratify": stratify,
+                                              "time_column": self.plan.time_column if self.plan.task_family == "time_series" else None},
+                reason=f"this instance analyses at most {cap} rows (MAX_ROWS); the file has {len(self.raw_df())}"))
+            _, ev = self.ctx.tool("pipeline_graph.row_cap", lambda: {"rows": len(self.raw_df()), "cap": cap},
+                                  {"max_rows": cap})
+            self.ctx.ledger.add(Recommendation(agent="supervisor", decision_point="row_cap",
+                                               recommendation=f"sample {cap} of {len(self.raw_df())} rows",
+                                               rationale="the host's memory limit (MAX_ROWS); stratified on the target for "
+                                                         "classification, most recent rows for time series",
+                                               evidence=[ev], confidence=1.0, confidence_method="rule"),
+                                options=["sample", "use all rows"], chosen="sample", decided_by="system")
+        plan = [a.model_dump() for a in rep.cleaning_plan]
         res, ev = self.ctx.tool("pipeline_core.apply_cleaning_plan", lambda: _clean_summary(self, plan),
                                 {"actions": [f"{a['action']}:{a['column']}" for a in plan if a["enabled"] and a["stage"] == "cleaning"]})
         task = self.plan.model_dump()

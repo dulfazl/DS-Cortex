@@ -99,6 +99,15 @@ def apply_cleaning_plan(df: pd.DataFrame, plan: list[dict]) -> tuple[pd.DataFram
                 warnings.simplefilter("ignore")
                 out[col] = pd.to_datetime(out[col], errors="coerce", format="mixed")
             detail = "parsed dates"
+        elif act == "sample_rows":
+            n = int(p["n"])
+            if len(out) > n:
+                if p.get("time_column") and p["time_column"] in out:      # time series: keep the most recent rows
+                    out = out.sort_values(p["time_column"]).tail(n)
+                else:
+                    strat = out[p["stratify"]] if p.get("stratify") in out and out[p["stratify"]].value_counts().min() >= 2 else None
+                    out, _ = train_test_split(out, train_size=n, random_state=int(p.get("seed", 0)), stratify=strat)
+            detail = f"sampled {len(out)} of {before} rows (row cap for this instance)"
         elif act == "set_nan_invalid":
             lo, hi = p.get("min"), p.get("max")
             bad = pd.Series(False, index=out.index)

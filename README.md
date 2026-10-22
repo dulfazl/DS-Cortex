@@ -50,7 +50,9 @@ Explore single agents interactively with the ADK web UI (needs a key): `PYTHONPA
 
 ## Deploy on Render
 
-1. In Render, choose **New > Blueprint** and pick this repository. `render.yaml` creates two services:
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dulfazl/DS-Cortex)
+
+1. Click the button (or in Render choose **New > Blueprint** and pick this repository). `render.yaml` creates two services:
    `ds-cortex-api` (Docker) and `ds-cortex-web` (Node).
 2. Enter `GOOGLE_API_KEY` when Render asks (leave it empty to run offline).
 3. If Render gives the API a URL other than `https://ds-cortex-api.onrender.com`, set `NEXT_PUBLIC_API_URL` on
@@ -58,8 +60,11 @@ Explore single agents interactively with the ADK web UI (needs a key): `PYTHONPA
 
 Free instances have 512 MB of RAM, no persistent disk and sleep after 15 idle minutes, so the first request
 after a pause is slow and finished runs disappear on restart (the memory store is re-seeded from
-`memory/seed_fingerprints.json`). The Blueprint uses fast settings and one run at a time to fit; for larger
-CSVs choose a bigger plan and add a disk mounted at `/data`.
+`memory/seed_fingerprints.json`). The Blueprint uses fast settings, one run at a time and `MAX_ROWS=5000` to fit:
+files with more rows are sampled down (stratified for classification), and the sampling is logged in the
+Decision Ledger and repeated by the exported script. In a test with a 512 MB limit, a 20,640-row file peaked
+at 507 MB without the cap and 295 MB with it. For larger CSVs choose a bigger plan, raise `MAX_ROWS` and add a
+disk mounted at `/data`.
 
 The free Gemini tier allows about 20 requests per model per day and one analysis makes about 8, so the model
 chain (`GEMINI_FALLBACK_MODELS`) spreads calls across Flash models and falls back to template narration when
@@ -100,6 +105,12 @@ Tables and figures go to `reports/eval/` (ablation, paired Wilcoxon tests, flaw 
 rates, hallucinated-claim rate, reliability diagram, memory and cost). The metrics, configurations and
 tests were committed in `eval/PREREGISTRATION.md` before any result. Config A (single-LLM baseline) needs a
 Gemini key and runs model-written code in a separate process.
+
+## Reproducibility
+
+`pipeline.py` in every export bundle reproduces the reported score exactly on the same platform and package
+versions (recorded in `manifest.json`). Across operating systems, boosted-tree libraries can differ slightly:
+an XGBoost model scored on Linux reproduced exactly in the Linux image but differed by 0.6% on macOS.
 
 ## Tests
 

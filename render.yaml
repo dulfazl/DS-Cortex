@@ -24,6 +24,8 @@ services:
         value: "1"
       - key: MAX_UPLOAD_MB
         value: "20"
+      - key: MAX_ROWS                     # larger files are sampled down (logged in the ledger) to fit 512 MB
+        value: "5000"
       - key: DATA_RETENTION_HOURS
         value: "24"
       - key: ALLOWED_ORIGIN_REGEX

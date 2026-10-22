@@ -119,3 +119,17 @@ def test_audit_tools_never_crash(data):
     report = DataAuditorAgent(AgentContext.offline()).audit(df, plan)
     clean, log = pc.apply_cleaning_plan(df, [a.model_dump() for a in report.cleaning_plan])
     assert isinstance(clean, pd.DataFrame)
+
+
+def test_row_cap_samples_and_logs(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAX_ROWS", "120")
+    from app.config import reset_settings
+    reset_settings()
+    from app.ledger import Ledger
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame({"x": rng.normal(size=400), "y": (rng.normal(size=400) > 0).astype(int)})
+    s = _run(tmp_path, df, "Predict y from x")
+    assert s.status == "completed", s.error
+    assert s.stage_outputs["clean"]["rows"] == 120
+    assert any(e.decision_point == "row_cap" for e in Ledger(s.id).entries())
+    assert any(a.action == "sample_rows" for a in s.audit_report.cleaning_plan)   # so the exported script reproduces it

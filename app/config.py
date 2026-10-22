@@ -42,6 +42,7 @@ class Settings:
     fast: bool = False  # fewer repeats / tuning trials (eval harness, tests)
     blocker_policy: str = "ask"  # ask | drop | keep  (non-interactive runs use drop)
     static_plots: bool = True    # PNG copies of plots in the bundle (needs Chrome for Kaleido)
+    max_rows: int = 0            # 0 = no cap; small hosts sample larger files down (logged in the ledger)
     extra: dict = field(default_factory=dict)
 
     @property
@@ -81,6 +82,7 @@ def get_settings() -> Settings:
         fast=os.getenv("FAST_MODE", "0") == "1",
         blocker_policy=os.getenv("BLOCKER_POLICY", "ask"),
         static_plots=os.getenv("STATIC_PLOTS", "1") == "1",
+        max_rows=int(os.getenv("MAX_ROWS", "0")),
     )
     for d in (s.data_dir, s.log_dir, s.upload_dir, s.sessions_dir, s.db_path.parent):
         d.mkdir(parents=True, exist_ok=True)
@@ -99,7 +101,7 @@ def package_versions() -> dict[str, str]:
 
     names = ["pandas", "numpy", "scikit-learn", "scipy", "statsmodels", "xgboost", "lightgbm",
              "shap", "plotly", "optuna", "pydantic", "fastapi", "google-genai", "google-adk"]
-    out = {"python": platform.python_version()}
+    out = {"python": platform.python_version(), "platform": f"{platform.system()} {platform.machine()}"}
     for n in names:
         try:
             out[n] = md.version(n)
