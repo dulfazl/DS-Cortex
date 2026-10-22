@@ -61,6 +61,14 @@ class TestSetGuard:
         self.s.stage_outputs["test_reads"] = n + 1
 
 
+def _gain_note(vs: dict | None) -> str:
+    if not vs or not vs.get("applicable"):
+        return ""
+    lo, hi = vs["ci95"]
+    verdict = "more than chance" if vs["meaningful"] else "not more than chance: no signal to act on"
+    return f"; gain over the baseline {vs['gain']:+.4f} (95% interval {lo:+.4f} to {hi:+.4f}), {verdict}"
+
+
 class PipelineRun:
     def __init__(self, session_id: str, llm: BaseLLM | None = None, interactive: bool = True,
                  auto_answers: dict[str, Any] | None = None, on_event: Callable[[str, dict], None] | None = None):
@@ -501,6 +509,7 @@ class PipelineRun:
             out = pc.fit_and_score(df, task, chosen.spec, seed, split=split)
             holder.update(out)
             base = pc.fit_and_score(df, task, pc.baseline_spec(task), seed, split=split, keep_model=False)
+            holder["base_predictions"] = base.get("predictions")
             res = {"metric": task["metric"], "chosen": chosen.id, "test": out["test"], "score": out["score"],
                    "n_train": out["n_train"], "n_test": out["n_test"], "baseline": {"test": base["test"], "score": base["score"]}}
             if runner:
@@ -517,13 +526,22 @@ class PipelineRun:
         res, ev = self.ctx.tool("pipeline_core.fit_and_score", _score_all,
                                 {"chosen": chosen.id, "spec": chosen.spec, "seed": seed})
         metric = task["metric"]
+        evidence = [ev]
+        if task["task_family"] in ("classification", "regression") and holder.get("base_predictions"):
+            # is the gain over the baseline more than the held-out rows produce by chance?
+            vs, ev_vs = self.ctx.tool("sklearn_tools.holdout_gain", sk.holdout_gain, {"metric": metric, "n_rows": res["n_test"]},
+                                      holder["predictions"], holder["base_predictions"], metric, seed,
+                                      500 if self.settings.fast else 2000)
+            res["vs_baseline"] = vs
+            evidence.append(ev_vs)
         beat_base = pc.oriented(metric, res["score"]) > pc.oriented(metric, res["baseline"]["score"])
         noise = runner.cv.primary_std if runner else 0.0
         beat_runner = (not runner) or pc.oriented(metric, res["score"]) >= pc.oriented(metric, res["runner_up"]["score"]) - noise
         self.s.results.update(test=res, predictions=jsonable(holder.get("predictions")),
                               calibration={"confidence": fr["confidence"]["confidence"],
                                            "outcome": bool(beat_base and beat_runner),
-                                           "beat_baseline": bool(beat_base), "beat_runner_up_within_noise": bool(beat_runner)})
+                                           "beat_baseline": bool(beat_base), "beat_runner_up_within_noise": bool(beat_runner),
+                                           "beat_baseline_beyond_chance": (res.get("vs_baseline") or {}).get("meaningful")})
         if "model" in holder:
             path = self.s.dir / "model.joblib"
             joblib.dump(holder["model"], path)
@@ -532,8 +550,9 @@ class PipelineRun:
         self.ctx.ledger.add(Recommendation(agent="supervisor", decision_point="final_test_score",
                                            recommendation=f"{metric} {res['score']:.4f} on {res['n_test']} held-out rows",
                                            rationale=f"baseline {res['baseline']['score']:.4f}"
-                                           + (f"; runner-up {res['runner_up']['score']:.4f}" if runner else ""),
-                                           evidence=[ev], confidence=1.0, confidence_method="rule"),
+                                           + (f"; runner-up {res['runner_up']['score']:.4f}" if runner else "")
+                                           + _gain_note(res.get("vs_baseline")),
+                                           evidence=evidence, confidence=1.0, confidence_method="rule"),
                             options=[chosen.id], chosen=chosen.id, decided_by="system")
 
     def stage_explain(self) -> None:

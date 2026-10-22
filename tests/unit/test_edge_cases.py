@@ -151,6 +151,12 @@ def test_multiclass_imbalanced_target_with_dates_completes(tmp_path):
     assert store.get(s.id).status == "completed"   # the stored session loads
     for c in s.candidates:
         assert all(v == v for v in c.cv.secondary.values()), (c.id, c.cv.secondary)   # no NaN
+    # the status here is random: the summary must say there is no signal instead of naming drivers
+    assert s.results["test"]["vs_baseline"]["meaningful"] is False
+    from workflows.report_graph import load_explain
+    md = s.results["report_markdown"]
+    assert "not more than chance" in md and "## Main drivers" not in md
+    assert load_explain(s)["business"]["signal"] is False
 
 
 def test_date_parts_are_scaled_with_numeric_columns():
@@ -170,3 +176,45 @@ def test_excluded_models_are_skipped_and_logged():
     assert any("EXCLUDE_MODELS" in r and "gradient_boosting" in r for r in out["conditioning"])
     everything = tuple({s["model"] for s in sk.candidate_specs(plan, {}, 2000, 5, True)["specs"]})
     assert len(sk.candidate_specs(plan, {}, 2000, 5, True, None, everything)["specs"]) >= 2   # never left with nothing
+
+
+def _summary(vs, score=0.2553, base=0.25):
+    from agents.business.core import BusinessInsightAgent
+    plan = TaskPlan(task_family="classification", target="status", metric="pr_auc", rationale="t", confidence=0.9)
+    test = {"score": score, "baseline": {"score": base}, "vs_baseline": vs}
+    importance = {"importance": {"total_cents": 0.02, "placed_at": 0.01, "customer_country": 0.005}}
+    return BusinessInsightAgent(AgentContext.offline()).stakeholder_summary(plan, test, importance, None, None, {"final_test_score": 18})
+
+
+def test_summary_names_no_drivers_when_the_gain_is_chance():
+    b = _summary({"applicable": True, "gain": 0.0053, "ci95": [-0.021, 0.03], "meaningful": False, "n_rows": 400,
+                  "method": "paired bootstrap over the held-out rows"})
+    text = " ".join([b["headline"]] + [r["text"] for r in b["recommendations"]] + b["caveats"])
+    assert b["signal"] is False
+    assert "driven" not in text and "total_cents" not in text
+    assert "no better than chance" in b["headline"] and "Do not use this model" in text
+    assert "within what chance produces on 400 held-out rows" in " ".join(b["caveats"])
+
+
+def test_summary_names_drivers_when_the_gain_is_real():
+    b = _summary({"applicable": True, "gain": 0.21, "ci95": [0.15, 0.27], "meaningful": True, "n_rows": 400,
+                  "method": "paired bootstrap over the held-out rows"}, score=0.46)
+    assert b["signal"] is True
+    assert any("driven mostly by total_cents" in r["text"] for r in b["recommendations"])
+
+
+def test_learnable_target_names_its_drivers(tmp_path):
+    rng = np.random.default_rng(5)
+    n = 400
+    df = pd.DataFrame({"tenure": rng.integers(1, 60, n), "noise": rng.normal(size=n), "region": rng.choice(["n", "s"], n)})
+    df["churn"] = np.where(df["tenure"] + rng.normal(0, 4, n) < 20, "yes", "no")
+    path = tmp_path / "churn.csv"
+    df.to_csv(path, index=False)
+    s = PipelineRun(store.create(str(path), "Predict churn", flags=RunFlags(memory=False, tuning=False)).id,
+                    interactive=False).run()     # explanations on: the drivers come from the importance analysis
+    assert s.status == "completed", s.error
+    assert s.results["test"]["vs_baseline"]["meaningful"] is True
+    from workflows.report_graph import load_explain
+    business = load_explain(s)["business"]
+    assert business["signal"] is True and any("driven mostly by tenure" in r["text"] for r in business["recommendations"])
+    assert "## Main drivers" in s.results["report_markdown"]

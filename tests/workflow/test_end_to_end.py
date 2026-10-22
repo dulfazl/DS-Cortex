@@ -39,6 +39,9 @@ def test_full_chain_produces_verified_decision_and_bundle(fixtures_dir, tmp_path
     final = next(e for e in entries if e.decision_point == "model_choice")
     assert final.recommendation.claims and all(c.verified for c in final.recommendation.claims)
     assert s.stage_outputs["test_reads"] == 1
+    vs = s.results["test"]["vs_baseline"]   # drivers are named only when the held-out gain is more than chance
+    assert vs["applicable"] and vs["n_rows"] == s.results["test"]["n_test"]
+    assert ("## Main drivers" in s.results["report_markdown"]) == vs["meaningful"]
     z = zipfile.ZipFile(s.results["export"]["zip"])
     names = set(z.namelist())
     for f in ("report.md", "report.html", "pipeline.py", "requirements.txt", "ledger.json", "ledger.md",

@@ -15,6 +15,8 @@ import { Banner, Card, SeverityPill } from "./ui";
 const TABS = ["Overview", "Plots", "Model", "Decision Ledger", "Debate Transcript", "Code", "Drift"] as const;
 type Tab = (typeof TABS)[number];
 
+const signed = (v: number | undefined) => (v === undefined ? "–" : `${v >= 0 ? "+" : ""}${fmt(v, 3)}`);
+
 function Kpi({ title, value, sub, tone }: { title: string; value: string; sub?: string; tone?: string }) {
   return (
     <div className="rounded-xl bg-surface-2 px-4 py-3">
@@ -28,6 +30,8 @@ function Kpi({ title, value, sub, tone }: { title: string; value: string; sub?: 
 function Overview({ r, onEvidence }: { r: Results; onEvidence: (p: EvidencePayload) => void }) {
   const t = r.test;
   const better = LOWER_IS_BETTER.has(t.metric) ? t.score < t.baseline.score : t.score > t.baseline.score;
+  const vs = t.vs_baseline?.applicable ? t.vs_baseline : null;
+  const noSignal = vs?.meaningful === false;
   const final = r.ledger.find((e) => e.decision_point === "final_pipeline");
   const choice = r.ledger.find((e) => e.decision_point === "model_choice");
   const b = r.explain.business;
@@ -45,9 +49,31 @@ function Overview({ r, onEvidence }: { r: Results; onEvidence: (p: EvidencePaylo
           )}
         </Banner>
       )}
+      {noSignal && vs && (
+        <Banner tone="warn" title="No signal beyond chance">
+          On the {vs.n_rows} held-out rows the gain over the baseline ({signed(vs.gain)}, 95% interval {signed(vs.ci95?.[0])} to{" "}
+          {signed(vs.ci95?.[1])}) is within what chance produces. The columns in this file do not predict {r.plan.target ?? "the outcome"},
+          so no main factors are named and the feature importances describe noise.
+        </Banner>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi title={`Held-out ${t.metric}`} value={fmt(t.score, 4)} sub={`${t.n_test} rows never used for training or selection`} tone={better ? "text-good" : "text-bad"} />
-        <Kpi title="Baseline" value={fmt(t.baseline.score, 4)} sub={LOWER_IS_BETTER.has(t.metric) ? "lower is better" : "higher is better"} />
+        <Kpi
+          title={`Held-out ${t.metric}`}
+          value={fmt(t.score, 4)}
+          sub={`${t.n_test} rows never used for training or selection`}
+          tone={noSignal ? "text-warn" : better ? "text-good" : "text-bad"}
+        />
+        <Kpi
+          title="Baseline"
+          value={fmt(t.baseline.score, 4)}
+          sub={
+            vs
+              ? `gain ${signed(vs.gain)}, 95% interval ${signed(vs.ci95?.[0])} to ${signed(vs.ci95?.[1])}`
+              : LOWER_IS_BETTER.has(t.metric)
+                ? "lower is better"
+                : "higher is better"
+          }
+        />
         <Kpi title="Runner-up" value={t.runner_up ? fmt(t.runner_up.score, 4) : "–"} sub={t.runner_up?.id} />
         <div className="rounded-xl bg-surface-2 px-4 py-3">
           <p className="text-xs text-muted">Confidence in the choice</p>
@@ -70,7 +96,9 @@ function Overview({ r, onEvidence }: { r: Results; onEvidence: (p: EvidencePaylo
             />
           </div>
           {r.calibration && (
-            <p className="mt-1 text-xs text-muted">Held up on the test set: {r.calibration.outcome ? "yes" : "no"}</p>
+            <p className="mt-1 text-xs text-muted">
+              Held up on the test set: {r.calibration.outcome ? (noSignal ? "yes, but within chance" : "yes") : "no"}
+            </p>
           )}
         </div>
       </div>
@@ -172,6 +200,7 @@ function Overview({ r, onEvidence }: { r: Results; onEvidence: (p: EvidencePaylo
 
 function ModelTab({ r, onEvidence }: { r: Results; onEvidence: (p: EvidencePayload) => void }) {
   const imp = r.explain.importance;
+  const noSignal = r.test.vs_baseline?.applicable && r.test.vs_baseline.meaningful === false;
   const sorted = [...r.candidates].sort((a, b) => {
     const s = LOWER_IS_BETTER.has(r.plan.metric) ? 1 : -1;
     return s * ((a.cv?.primary_mean ?? 0) - (b.cv?.primary_mean ?? 0));
@@ -221,7 +250,12 @@ function ModelTab({ r, onEvidence }: { r: Results; onEvidence: (p: EvidencePaylo
         </div>
       </Card>
       {imp && (
-        <Card title={`Main drivers (${label(imp.method)})`}>
+        <Card title={noSignal ? `Feature importance, not drivers (${label(imp.method)})` : `Main drivers (${label(imp.method)})`}>
+          {noSignal && (
+            <Banner tone="warn" title="The model does not beat the baseline beyond chance">
+              These numbers describe noise, not what drives the outcome.
+            </Banner>
+          )}
           {imp.substituted && <Banner tone="warn" title="SHAP was not available">{imp.substitution_reason}. Permutation importance is shown instead.</Banner>}
           <ul className="mt-2 space-y-1">
             {Object.entries(imp.importance)

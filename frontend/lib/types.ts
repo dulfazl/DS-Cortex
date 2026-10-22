@@ -227,6 +227,7 @@ export interface Results {
     baseline: { score: number };
     runner_up?: { id: string; score: number };
     shadow?: { recommended: string; recommended_score: number; client: string; client_score: number };
+    vs_baseline?: { applicable: boolean; gain?: number; ci95?: [number, number]; meaningful?: boolean; n_rows?: number; method?: string };
   };
   calibration: { confidence: number; outcome: boolean; beat_baseline: boolean } | null;
   override: { recommended: string; client: string; warning: string | null } | null;
@@ -239,6 +240,7 @@ export interface Results {
       kpis: { name: string; value: number; baseline: number; lift: string | null }[];
       recommendations: { text: string; cites: string }[];
       caveats: string[];
+      signal?: boolean;
     };
     research?: { note: string; novelty: string; disclaimer: string };
   };

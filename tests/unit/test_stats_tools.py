@@ -95,3 +95,30 @@ def test_label_noise_on_a_capped_sample_reports_file_rows():
     assert 0.01 < capped["estimated_noise_rate"] < 0.05     # 2% of labels were flipped
     found = set(capped["suspect_rows"])
     assert found and len(found & set(flipped.tolist())) / len(found) > 0.8   # row numbers refer to the file
+
+
+def _preds(y, pred, proba=None, classes=None):
+    return {"y_true": list(y), "y_pred": list(pred), "proba": proba, "classes": classes or [], "pos": None}
+
+
+def test_holdout_gain_separates_noise_from_signal():
+    from tools import sklearn_tools as sk
+    rng = np.random.default_rng(0)
+    y = rng.choice(4, 400, p=[.5, .17, .17, .16])
+    prior = np.tile([.5, .17, .17, .16], (400, 1))
+    noise = rng.dirichlet(np.ones(4), 400)
+    signal = np.eye(4)[y] * 0.5 + noise * 0.5
+    base = _preds(y, prior.argmax(1), prior.tolist(), list("abcd"))
+    r = sk.holdout_gain(_preds(y, noise.argmax(1), noise.tolist(), list("abcd")), base, "pr_auc", 0, 300)
+    assert r["applicable"] and r["meaningful"] is False and r["ci95"][0] < 0 < r["ci95"][1]
+    r = sk.holdout_gain(_preds(y, signal.argmax(1), signal.tolist(), list("abcd")), base, "pr_auc", 0, 300)
+    assert r["meaningful"] is True and r["ci95"][0] > 0
+
+
+def test_holdout_gain_is_oriented_for_error_metrics():
+    from tools import sklearn_tools as sk
+    rng = np.random.default_rng(1)
+    y = rng.normal(size=300)
+    good = sk.holdout_gain(_preds(y, y + rng.normal(0, 0.1, 300)), _preds(y, np.zeros(300)), "rmse", 0, 300)
+    assert good["gain"] > 0 and good["meaningful"]          # lower rmse than the baseline is a positive gain
+    assert sk.holdout_gain(_preds(y[:10], y[:10]), _preds(y[:10], y[:10]), "rmse", 0)["applicable"] is False

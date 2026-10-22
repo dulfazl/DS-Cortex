@@ -233,6 +233,37 @@ def bootstrap_better(a: list[float], b: list[float], metric: str, seed: int, n: 
                      "ci95": [float(lo), float(hi)], "paired": paired, "n_boot": n})
 
 
+def holdout_gain(chosen: dict, baseline: dict, metric: str, seed: int, n_boot: int = 2000) -> dict:
+    """Does the chosen model beat the baseline on the held-out rows by more than chance? Paired bootstrap
+    over those rows: both models are scored on the same resample, and the gain counts only when its 95%
+    interval lies above zero. `chosen` and `baseline` are fit_and_score predictions (classification or
+    regression). The gain is oriented so that positive is better, also for error metrics."""
+    y = np.asarray(chosen["y_true"])
+    n = len(y)
+    if n < 20:
+        return {"applicable": False, "reason": f"only {n} held-out rows"}
+    sign = 1 if pc.greater_is_better(metric) else -1
+    classes, pos = np.asarray(chosen.get("classes") or []), chosen.get("pos")
+    preds = [(np.asarray(p["y_pred"]), np.asarray(p["proba"]) if p.get("proba") is not None else None)
+             for p in (chosen, baseline)]
+
+    def gain(idx) -> float:
+        a, b = (pc.supervised_scores([metric], y[idx], yp[idx], pr[idx] if pr is not None else None, classes, pos)[metric]
+                for yp, pr in preds)
+        return sign * (a - b)
+
+    point = gain(np.arange(n))
+    rng = np.random.default_rng(seed)
+    diffs = np.array([gain(rng.integers(0, n, n)) for _ in range(n_boot)])
+    diffs = diffs[np.isfinite(diffs)]   # a resample can miss a class, leaving the metric undefined
+    if len(diffs) < n_boot // 2:
+        return {"applicable": False, "reason": f"{metric} undefined on most resamples of {n} rows"}
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    return jsonable({"applicable": True, "metric": metric, "gain": point, "ci95": [lo, hi],
+                     "p_better": float((diffs > 0).mean()), "meaningful": bool(lo > 0), "n_rows": n,
+                     "n_boot": int(len(diffs)), "method": "paired bootstrap over the held-out rows"})
+
+
 def bounded_metric(metric: str) -> bool:
     return metric in ("f1_macro", "roc_auc", "pr_auc", "recall_at_precision", "silhouette", "r2", "score_stability", "policy_value")
 

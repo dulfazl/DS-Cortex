@@ -59,8 +59,16 @@ class BusinessInsightAgent(BaseAgent):
         gain, rel = k["gain"], k["relative_gain"]
         kpis = [{"name": f"held-out {metric}", "value": score, "baseline": base,
                  "lift": f"{rel:+.1%} relative to the baseline" if rel is not None else None}]
-        drivers = list((importance or {}).get("importance", {}).items())[:3]
+        vs = test.get("vs_baseline") or {}
+        # no signal: the model is not better than the baseline by more than chance, so its importances describe noise
+        no_signal = gain <= 0 or vs.get("meaningful") is False
+        drivers = [] if no_signal else list((importance or {}).get("importance", {}).items())[:3]
+        target = plan.target or "the outcome"
         recs = []
+        if no_signal:
+            recs.append({"text": f"Do not use this model for decisions about {target}. To predict it, add information that is "
+                                 "known before the outcome and plausibly related to it: the columns in this file carry little or none.",
+                         "cites": f"step {ledger_steps.get('final_test_score', '?')} (held-out comparison with the baseline)"})
         if drivers:
             recs.append({"text": "The outcome is driven mostly by " + ", ".join(d for d, _ in drivers)
                          + ". Focus data quality and business attention there.",
@@ -76,6 +84,10 @@ class BusinessInsightAgent(BaseAgent):
                 recs.append({"text": text,
                              "cites": f"audit finding on {f.column or 'rows'} (step {ledger_steps.get('audit:' + f.issue_type + (':' + f.column if f.column else ''), '?')})"})
         caveats = []
+        if no_signal and gain > 0 and vs.get("applicable"):
+            lo, hi = vs["ci95"]
+            caveats.append(f"The gain over the baseline ({vs['gain']:+.3f}) is within what chance produces on {vs['n_rows']} "
+                           f"held-out rows (95% interval {lo:+.3f} to {hi:+.3f}), so no main factors are named.")
         flags = {fl.issue for fl in (profile.flags if profile else [])}
         if "heteroscedasticity" in flags:
             caveats.append("Prediction errors are larger for some kinds of rows, so treat single predictions as approximate.")
@@ -86,12 +98,22 @@ class BusinessInsightAgent(BaseAgent):
         if "multicollinearity" in flags:
             caveats.append("Several inputs move together, so do not read the effect of any single input in isolation.")
         if gain <= 0:
-            caveats.append("The chosen model did not beat the simple baseline on the held-out data.")
+            caveats.append("The chosen model did not beat the simple baseline on the held-out data, so no main factors are named.")
         facts = {"metric": metric, "score": score, "baseline": base, "relative_lift": rel,
+                 "beats_baseline_beyond_chance": not no_signal, "gain_ci95": vs.get("ci95"),
                  "drivers": [d for d, _ in drivers], "caveats": caveats, "recommendations": [r["text"] for r in recs]}
-        fallback = (f"On data it never saw, the model scores {score:.3f} {metric} against {base:.3f} for a simple baseline"
-                    + (f" ({rel:+.1%})." if rel is not None else ".") + (" " + " ".join(caveats) if caveats else ""))
-        text, source = narrate(self.ctx.llm, "Write a short summary for a business stakeholder. Soften any claim the caveats "
-                                             "qualify.", facts, fallback, depth="beginner")
+        if no_signal:
+            others = [c for c in caveats if "chance produces" not in c and "did not beat" not in c]   # shown as caveats already
+            fallback = (f"On data it never saw, the model scores {score:.3f} {metric} against {base:.3f} for a simple baseline: "
+                        f"no better than chance, so this file does not show what drives {target}."
+                        + (" " + " ".join(others) if others else ""))
+            task = ("Write a short summary for a business stakeholder. The model is no better than a simple baseline beyond "
+                    "chance: say so plainly in the first sentence, name no drivers or factors, and do not suggest acting on it.")
+        else:
+            fallback = (f"On data it never saw, the model scores {score:.3f} {metric} against {base:.3f} for a simple baseline"
+                        + (f" ({rel:+.1%})." if rel is not None else ".") + (" " + " ".join(caveats) if caveats else ""))
+            task = "Write a short summary for a business stakeholder. Soften any claim the caveats qualify."
+        text, source = narrate(self.ctx.llm, task, facts, fallback, depth="beginner")
         self.finished("stakeholder summary ready")
-        return {"headline": text, "source": source, "kpis": kpis, "recommendations": recs, "caveats": caveats}
+        return {"headline": text, "source": source, "kpis": kpis, "recommendations": recs, "caveats": caveats,
+                "signal": not no_signal}

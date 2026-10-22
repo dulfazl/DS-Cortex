@@ -96,7 +96,7 @@ all are used up.
 | Critique | Pipeline Critic | Overfitting, leakage probes, subgroups, seed stability, covariate shift, unnecessary steps; up to 3 revision rounds. |
 | Debate | Supervisor | Positions, evidence verification, resolution table, at most 2 rebuttal rounds, computed confidence. |
 | Tuning, test | ML Architect, Supervisor | Optuna on the two finalists; the held-out test set is read once. |
-| Report | Explainability, Business, Research, Report | SHAP (with a logged fallback), error analysis, ranked plots, narratives, model card, export bundle. |
+| Report | Explainability, Business, Research, Report | SHAP (with a logged fallback), error analysis, ranked plots, narratives, model card, export bundle. Drivers are named only when the held-out gain over the baseline is more than chance (paired bootstrap over the test rows); otherwise the summary says plainly that the file shows no signal. |
 
 **Run modes:** Autopilot stops only for blockers; Review pauses at the preprocessing, feature-engineering,
 modelling and tuning bundles for approval. Overriding the recommendation warns once, with numbers, and

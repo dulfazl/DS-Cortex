@@ -85,6 +85,11 @@ class ReportGeneratorAgent(BaseAgent):
         L.append(f"| baseline | {t['baseline']['score']:.4f} |")
         if t.get("shadow"):
             L.append(f"| shadow: recommended {t['shadow']['recommended']} | {t['shadow']['recommended_score']:.4f} |")
+        vs = t.get("vs_baseline") or {}
+        if vs.get("applicable"):
+            lo, hi = vs["ci95"]
+            L += ["", f"Gain over the baseline: {vs['gain']:+.4f} (95% interval {lo:+.4f} to {hi:+.4f}, {vs['method']}): "
+                      + ("more than chance." if vs["meaningful"] else "**not more than chance**: the model has no signal to act on.")]
         r = sec["recommendation"]
         L += ["", f"Confidence in the choice: **{r['confidence']:.2f}** (stability {r['components']['stability']:.2f}, "
                   f"separation {r['components']['separation']:.2f}, effect {r['components']['effect']:.2f}). {r['tuning_note']}.", ""]
@@ -115,7 +120,12 @@ class ReportGeneratorAgent(BaseAgent):
                   for c in sec["client_choices"]] + [""]
         if sec.get("importance"):
             imp = sec["importance"]
-            L += [f"## Main drivers ({imp['method'].replace('_', ' ')})", ""]
+            if (sec.get("business") or {}).get("signal", True):
+                L += [f"## Main drivers ({imp['method'].replace('_', ' ')})", ""]
+            else:
+                L += [f"## Feature importance ({imp['method'].replace('_', ' ')})", "",
+                      "The model does not beat the baseline by more than chance, so these numbers describe noise, "
+                      "not what drives the outcome.", ""]
             L += [f"- {k}: {v:.4f}" for k, v in list(imp["importance"].items())[:10]] + [""]
         if sec.get("research"):
             L += ["## Research context", "", sec["research"]["note"], "", f"Novelty: {sec['research']['novelty']}.", ""]

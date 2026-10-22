@@ -138,6 +138,11 @@ def model_card(s, final_entry_steps: dict, importance: dict | None) -> str:
               f"- Primary metric (fixed before modelling): {plan.metric}; secondary: {', '.join(plan.secondary_metrics) or 'none'}",
               "", "## Performance (held-out test set, used once)", "",
               f"- {plan.metric}: {test['score']:.4f} (baseline {test['baseline']['score']:.4f})"]
+    vs = test.get("vs_baseline") or {}
+    if vs.get("applicable"):
+        lo, hi = vs["ci95"]
+        lines.append(f"- Gain over the baseline: {vs['gain']:+.4f} (95% interval {lo:+.4f} to {hi:+.4f}): "
+                     + ("more than chance" if vs["meaningful"] else "not more than chance; do not use this model for decisions"))
     if test.get("runner_up"):
         lines.append(f"- Runner-up {test['runner_up']['id']}: {test['runner_up']['score']:.4f}")
     lines += [f"- Confidence in the choice: {fr['confidence']['confidence']:.2f} ({fr['confidence']['formula']})"]
@@ -149,7 +154,12 @@ def model_card(s, final_entry_steps: dict, importance: dict | None) -> str:
     lines += ["- Drift: use the drift check (alert at drift score 0.3) on new batches; it does not retrain or monitor.",
               "- Not for: decisions about individuals without human review; data unlike the training data."]
     if importance:
-        lines += ["", "## Main drivers", ""] + [f"- {k}: {v:.4f}" for k, v in list(importance["importance"].items())[:8]]
+        if vs.get("meaningful") is False:
+            lines += ["", "## Feature importance", "", "Not drivers: the model does not beat the baseline by more than chance, "
+                      "so these numbers describe noise.", ""]
+        else:
+            lines += ["", "## Main drivers", ""]
+        lines += [f"- {k}: {v:.4f}" for k, v in list(importance["importance"].items())[:8]]
         if importance.get("substituted"):
             lines.append(f"- Note: {importance['substitution_reason']}; permutation importance used instead.")
     return "\n".join(lines) + "\n"
