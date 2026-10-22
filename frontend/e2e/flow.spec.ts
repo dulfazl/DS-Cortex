@@ -21,10 +21,17 @@ test("upload, review-mode approvals, results tabs and downloads", async ({ page 
   for (let i = 0; i < 6; i++) {
     await expect(approve.or(done)).toBeVisible();
     if (await done.isVisible()) break;
-    const title = await bundle.textContent();
+    const [title] = await bundle.allTextContents();
     await approve.click();
-    // wait until this bundle is gone: the next one, or the results
-    await expect.poll(async () => (await done.isVisible()) || ((await bundle.count()) > 0 && (await bundle.textContent()) !== title) || (await bundle.count()) === 0).toBe(true);
+    // wait until this bundle is gone (the next one, or the results). allTextContents() never waits for an
+    // element, unlike textContent(), which would hang if the heading vanished between two checks.
+    await expect
+      .poll(async () => {
+        if (await done.isVisible()) return true;
+        const titles = await bundle.allTextContents();
+        return titles.length === 0 || titles[0] !== title;
+      })
+      .toBe(true);
   }
   await expect(done).toBeVisible();
   await expect(page.getByText(/Held-out f1_macro/)).toBeVisible();
