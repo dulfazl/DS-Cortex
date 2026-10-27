@@ -48,15 +48,29 @@ python -m scripts.run_chain tests/fixtures/classification.csv "Predict whether a
 
 Explore single agents interactively with the ADK web UI (needs a key): `PYTHONPATH=. adk web agents`.
 
-## Deploy on Render
+## Deploy for free: Vercel (website) and Render (API)
+
+The website and the API are hosted separately, both on free plans. Render's free plan gives a workspace 750
+instance hours a month, which one always-on service fits and two do not, so only the API runs there.
+
+**API on Render**
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dulfazl/DS-Cortex)
 
-1. Click the button (or in Render choose **New > Blueprint** and pick this repository). `render.yaml` creates two services:
-   `ds-cortex-api` (Docker) and `ds-cortex-web` (Node).
+1. Click the button (or in Render choose **New > Blueprint** and pick this repository). `render.yaml` creates one
+   Docker service, `ds-cortex-api`.
 2. Enter `GOOGLE_API_KEY` when Render asks (leave it empty to run offline).
-3. If Render gives the API a URL other than `https://ds-cortex-api.onrender.com`, set `NEXT_PUBLIC_API_URL` on
-   `ds-cortex-web` to that URL and redeploy the web service (the value is built into the page).
+3. `ALLOWED_ORIGIN_REGEX` lets the website call the API from `https://ds-cortex*.vercel.app`. If your Vercel
+   address is different, change it there.
+
+**Website on Vercel**
+
+1. In Vercel choose **Add New > Project**, import this repository and set the **Root Directory** to `frontend`.
+2. Add the environment variable `NEXT_PUBLIC_API_URL` with the API's URL (for example
+   `https://ds-cortex-api.onrender.com`); it is built into the page, so redeploy after changing it.
+3. Deploy. Pushes to `main` redeploy automatically.
+
+While the API wakes from sleep, the website shows a short notice instead of an error.
 
 Free instances have 512 MB of RAM, no persistent disk and sleep after 15 idle minutes, so the first request
 after a pause is slow and finished runs disappear on restart (the memory store is re-seeded from

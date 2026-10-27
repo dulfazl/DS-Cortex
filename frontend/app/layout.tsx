@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MetaBadge } from "@/components/MetaBadge";
+import { ServerStatus } from "@/components/ServerStatus";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,7 +32,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+          <ServerStatus />
+          {children}
+        </main>
         <footer className="border-t border-border py-4 text-center text-xs text-muted">
           Every recommendation carries tool-run evidence and a computed confidence. Nothing is decided silently.
         </footer>

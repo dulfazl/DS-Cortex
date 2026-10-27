@@ -210,3 +210,25 @@ def test_rate_limit(client, fixtures_dir):
     finally:
         r.RATE_LIMIT = (20, 3600)
     assert codes == [200, 200, 429]
+
+
+def test_render_blueprint_lets_the_vercel_site_call_the_api(monkeypatch):
+    """The website runs on Vercel and the API on Render: the origin pattern in render.yaml must admit the
+    Vercel addresses (production and preview) and nothing else."""
+    from pathlib import Path
+
+    import yaml
+
+    from app.config import reset_settings
+    spec = yaml.safe_load((Path(__file__).resolve().parents[2] / "render.yaml").read_text())
+    assert [s["name"] for s in spec["services"]] == ["ds-cortex-api"]       # one free service fits the monthly hours
+    regex = next(e["value"] for e in spec["services"][0]["envVars"] if e["key"] == "ALLOWED_ORIGIN_REGEX")
+    monkeypatch.setenv("ALLOWED_ORIGIN_REGEX", regex)
+    reset_settings()
+    from app.main import create_app
+    c = TestClient(create_app())
+    for origin, allowed in [("https://ds-cortex.vercel.app", True), ("https://ds-cortex-git-main-dulfazls-projects.vercel.app", True),
+                            ("https://example.vercel.app", False), ("https://ds-cortex.vercel.app.evil.com", False)]:
+        r = c.options("/meta", headers={"Origin": origin, "Access-Control-Request-Method": "GET"})
+        assert (r.headers.get("access-control-allow-origin") == origin) is allowed, origin
+    reset_settings()

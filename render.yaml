@@ -1,4 +1,6 @@
-# Render Blueprint: New > Blueprint, pick this repository, enter GOOGLE_API_KEY when asked.
+# Render Blueprint for the API only: New > Blueprint, pick this repository, enter GOOGLE_API_KEY when asked.
+# The website runs on Vercel (see README). One free service fits inside Render's 750 free hours a month;
+# two always-on services do not.
 # Free instances have 512 MB of RAM, no persistent disk and sleep after 15 idle minutes: fine for the
 # demo files and small CSVs. For larger files choose a bigger plan and add a disk at /data.
 services:
@@ -37,19 +39,4 @@ services:
       - key: DATA_RETENTION_HOURS
         value: "24"
       - key: ALLOWED_ORIGIN_REGEX
-        value: https://ds-cortex-web(-[a-z0-9]+)?\.onrender\.com
-
-  - type: web
-    name: ds-cortex-web
-    runtime: node
-    rootDir: frontend
-    plan: free
-    buildCommand: npm ci && npm run build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/
-    startCommand: node .next/standalone/server.js
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
-      - key: HOSTNAME
-        value: 0.0.0.0
-      - key: NEXT_PUBLIC_API_URL          # read at build time; change it if Render gives the API another URL
-        value: https://ds-cortex-api.onrender.com
+        value: https://(ds-cortex[a-z0-9-]*\.vercel\.app|ds-cortex-web(-[a-z0-9]+)?\.onrender\.com)
