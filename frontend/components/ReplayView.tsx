@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api, API_URL } from "@/lib/api";
+import { api, DEMO, type ReplayInfo } from "@/lib/api";
+import { fmt } from "@/lib/format";
 import { useRunStore } from "@/lib/store";
 import type { Results, RunEvent } from "@/lib/types";
 import { useEventStream } from "@/lib/useEventStream";
@@ -11,12 +12,12 @@ import { ResultsView } from "./ResultsView";
 import { Banner, Card, EmptyState } from "./ui";
 
 export function ReplayList() {
-  const [names, setNames] = useState<string[] | null>(null);
+  const [runs, setRuns] = useState<ReplayInfo[] | null>(null);
   useEffect(() => {
-    api.replays().then(setNames).catch(() => setNames([]));
+    api.replays().then(setRuns).catch(() => setRuns([]));
   }, []);
-  if (names === null) return null;
-  if (names.length === 0)
+  if (runs === null) return null;
+  if (runs.length === 0)
     return (
       <EmptyState title="No recorded runs yet">
         Record one with <code className="font-mono">python -m scripts.record_replay SESSION_ID NAME</code> after a good run.
@@ -24,11 +25,18 @@ export function ReplayList() {
     );
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
-      {names.map((n) => (
-        <li key={n}>
-          <Link href={`/replay/${n}`} className="card block p-4 hover:border-accent">
-            <p className="font-semibold">{n}</p>
-            <p className="text-sm text-muted">Stream this recorded run</p>
+      {runs.map((r) => (
+        <li key={r.name}>
+          <Link href={`/replay/${r.name}`} className="card block h-full p-4 hover:border-accent">
+            <p className="font-semibold">{r.file_name ?? r.name}</p>
+            {r.problem_statement && <p className="mt-1 text-sm">“{r.problem_statement}”</p>}
+            {r.score != null && r.baseline != null && (
+              <p className="mt-2 text-xs text-muted">
+                {r.task?.replace("_", " ")} · held-out {r.metric} {fmt(r.score, 3)} vs baseline {fmt(r.baseline, 3)} ·{" "}
+                {r.beyond_chance === false ? "no signal beyond chance" : "real gain"}
+              </p>
+            )}
+            <p className="mt-2 text-sm text-accent">Watch the recorded run →</p>
           </Link>
         </li>
       ))}
@@ -47,11 +55,13 @@ export function ReplayView({ name }: { name: string }) {
     },
     [name],
   );
-  useEventStream(started ? `replay:${name}:${speed}` : null, { url: `${API_URL}/replays/${name}/events?speed=${speed}`, onEvent, enabled: started });
+  useEventStream(started ? `replay:${name}:${speed}` : null, { url: api.replayEventsUrl(name, speed), onEvent, enabled: started });
   return (
     <div className="space-y-4">
       <Banner tone="info" title={`REPLAY: ${name}`}>
-        This is a recorded run streamed again, not a live analysis.
+        {DEMO
+          ? "A real run, recorded with the full system and played back in your browser. Nothing is computed on this site."
+          : "This is a recorded run streamed again, not a live analysis."}
       </Banner>
       {!started && (
         <Card title="Play the recording">

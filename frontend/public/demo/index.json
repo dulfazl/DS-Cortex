@@ -1,0 +1,26 @@
+[
+ {
+  "name": "telco-churn",
+  "file_name": "telco_churn.csv",
+  "problem_statement": "Predict whether a customer will churn, and explain the main drivers",
+  "task": "classification",
+  "metric": "f1_macro",
+  "score": 0.73515,
+  "baseline": 0.423486,
+  "beyond_chance": true,
+  "events": 136,
+  "duration_seconds": 60
+ },
+ {
+  "name": "ecommerce-orders",
+  "file_name": "ecommerce-orders-10k.csv",
+  "problem_statement": "Predict whether an e-commerce order will be cancelled or refunded, and identify the main factors influencing the outcome.",
+  "task": "classification",
+  "metric": "pr_auc",
+  "score": 0.258011,
+  "baseline": 0.25,
+  "beyond_chance": false,
+  "events": 183,
+  "duration_seconds": 114
+ }
+]

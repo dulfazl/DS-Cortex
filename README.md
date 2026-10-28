@@ -48,52 +48,46 @@ python -m scripts.run_chain tests/fixtures/classification.csv "Predict whether a
 
 Explore single agents interactively with the ADK web UI (needs a key): `PYTHONPATH=. adk web agents`.
 
-## Deploy for free: Vercel (website) and Render (API)
+## Live demo
 
-The website and the API are hosted separately, both on free plans. Render's free plan gives a workspace 750
-instance hours a month, which one always-on service fits and two do not, so only the API runs there.
+**https://ds-cortex.vercel.app** is a free, server-less demo: the website replays two real runs recorded with the full
+system (a telco churn file with real signal, and an e-commerce file where the system reports no signal beyond
+chance), with every results tab. Uploading a new file needs the analysis server, which the demo does not host.
 
-**API on Render**
+The demo is the `frontend` folder built with `NEXT_PUBLIC_DEMO=1` (on Vercel: Root Directory `frontend`, that
+environment variable, nothing else). Its recordings are static files made from completed runs:
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dulfazl/DS-Cortex)
+```bash
+python -m scripts.export_demo frontend/public/demo SESSION_ID:telco-churn SESSION_ID:ecommerce-orders
+```
 
-1. Click the button (or in Render choose **New > Blueprint** and pick this repository). `render.yaml` creates one
-   Docker service, `ds-cortex-api`.
-2. Enter `GOOGLE_API_KEY` when Render asks (leave it empty to run offline).
-3. `ALLOWED_ORIGIN_REGEX` lets the website call the API from `https://ds-cortex*.vercel.app`. If your Vercel
-   address is different, change it there.
+## Hosting the full system
 
-**Website on Vercel**
+The API needs a long-running server: runs execute in background threads and stream events, and the
+machine-learning libraries are far too large for serverless functions. Any Docker host works. Build the root
+`Dockerfile`, set `GOOGLE_API_KEY` (optional) and `PORT`, allow the website's address with `ALLOWED_ORIGINS` or
+`ALLOWED_ORIGIN_REGEX`, and build the website with `NEXT_PUBLIC_API_URL` pointing at the API. While a sleeping
+API wakes up, the website shows a short notice instead of an error.
 
-1. In Vercel choose **Add New > Project**, import this repository and set the **Root Directory** to `frontend`.
-2. Add the environment variable `NEXT_PUBLIC_API_URL` with the API's URL (for example
-   `https://ds-cortex-api.onrender.com`); it is built into the page, so redeploy after changing it.
-3. Deploy. Pushes to `main` redeploy automatically.
+### Small servers
 
-While the API wakes from sleep, the website shows a short notice instead of an error.
+Hosts with little memory or a fraction of a CPU need a lighter configuration; these settings were measured on a
+container limited to 512 MB and 0.1 CPU:
 
-Free instances have 512 MB of RAM, no persistent disk and sleep after 15 idle minutes, so the first request
-after a pause is slow and finished runs disappear on restart (the memory store is re-seeded from
-`memory/seed_fingerprints.json`). The Blueprint uses fast settings, one run at a time and `MAX_ROWS=2000`:
-files with more rows are sampled down (stratified for classification), and the sampling is logged in the
-Decision Ledger and repeated by the exported script. In a test with a 512 MB limit, a 20,640-row file peaked
-at 507 MB without a cap and 295 MB with a 5,000-row cap. For larger CSVs choose a bigger plan, raise `MAX_ROWS`
-and add a disk mounted at `/data`.
-
-A free instance also has a tenth of a CPU, which shapes the rest of the Blueprint:
-
-- **Threads.** Numerical libraries start one thread per host core, and in a container with that little CPU the
-  threads stall each other: in a test limited like the free plan, a logistic regression that fits in 1.4
-  seconds on a laptop took 25 minutes. The app sizes its thread pools to the container's CPU quota, and the
-  Blueprint sets `N_JOBS=1` in case the quota is not visible (`/readyz` reports the value in use).
-- **A lighter search.** The Critic reviews the best 2 candidates with one revision round (`CRITIC_TOP_K=2`,
-  `CRITIC_ROUNDS=1`), and scikit-learn's gradient boosting is left out (`EXCLUDE_MODELS`) because it costs
-  about 13 times as much as XGBoost, which still covers boosted trees with LightGBM. The candidate factory
-  lists the exclusion among its reasons, and the Critic's opening event states its budget. On a 10,000-row
-  e-commerce file these settings cut the work from 247 to 29 CPU-seconds.
-
-Keep the run page open: it checks the run once a minute, which also keeps the instance awake until the run
-ends. If the instance restarts anyway, the page says the run is gone instead of waiting.
+- **Rows.** `MAX_ROWS=2000` samples larger files down (stratified for classification); the sampling is logged in
+  the Decision Ledger and repeated by the exported script. A 20,640-row file peaked at 507 MB without a cap and
+  295 MB with a 5,000-row cap.
+- **Threads.** Numerical libraries start one thread per host core, and in a container with little CPU the
+  threads stall each other: a logistic regression that fits in 1.4 seconds on a laptop took 25 minutes. The app
+  sizes its thread pools to the container's CPU quota; set `N_JOBS=1` if the quota is not visible (`/readyz`
+  reports the value in use).
+- **A lighter search.** `CRITIC_TOP_K=2`, `CRITIC_ROUNDS=1` and `EXCLUDE_MODELS=gradient_boosting` (scikit-learn's
+  gradient boosting costs about 13 times as much as XGBoost, which still covers boosted trees with LightGBM).
+  The candidate factory lists the exclusion among its reasons, and the Critic's opening event states its budget.
+  On a 10,000-row e-commerce file these settings cut the work from 247 to 29 CPU-seconds.
+- **Restarts.** Without a persistent disk, finished runs disappear when the server restarts (the memory store is
+  re-seeded from `memory/seed_fingerprints.json`), and the run page says so instead of waiting. Keep the run page
+  open: it checks the run once a minute, which also keeps a sleeping free instance awake until the run ends.
 
 The free Gemini tier allows about 20 requests per model per day and one analysis makes about 8, so the model
 chain (`GEMINI_FALLBACK_MODELS`) spreads calls across Flash models and falls back to template narration when

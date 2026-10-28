@@ -37,9 +37,42 @@ export function useEventStream(
     let retry: ReturnType<typeof setTimeout> | null = null;
     let dropped = false;
 
+    // "static:<path>?speed=N": a recorded run served as a file (demo site); play it back here at its pace
+    const playStatic = (src: string) => {
+      const [path, query] = src.slice("static:".length).split("?");
+      const speed = Math.max(0.1, Number(new URLSearchParams(query).get("speed") || 1));
+      fetch(path)
+        .then((r) => r.json())
+        .then((data: { events: { type: string; seq: number; offset: number; data: Record<string, unknown> }[] }) => {
+          if (closed) return;
+          setConnected(true);
+          let last = 0;
+          const play = (i: number) => {
+            if (closed || i >= data.events.length) return;
+            const e = data.events[i];
+            const wait = Math.max(0, ((e.offset - last) / speed) * 1000);
+            last = e.offset;
+            retry = setTimeout(() => {
+              const ev = { ...e.data, type: e.type, seq: e.seq, replay: true } as RunEvent;
+              add(ev);
+              onEvent.current?.(ev);
+              if (TERMINAL.has(e.type)) {
+                closed = true;
+                setConnected(false);
+                return;
+              }
+              play(i + 1);
+            }, wait);
+          };
+          play(0);
+        })
+        .catch(() => setConnected(false));
+    };
+
     const connect = () => {
       const after = useRunStore.getState().lastSeq;
       const base = opts?.url ?? `${API_URL}/sessions/${sessionId}/events`;
+      if (base.startsWith("static:")) return playStatic(base);
       es = new EventSource(`${base}${base.includes("?") ? "&" : "?"}after=${after}`);
       es.onopen = () => {
         setConnected(true);

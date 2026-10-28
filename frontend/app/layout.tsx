@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MetaBadge } from "@/components/MetaBadge";
 import { ServerStatus } from "@/components/ServerStatus";
+import { DEMO } from "@/lib/api";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <nav className="flex items-center gap-3 whitespace-nowrap text-sm text-muted sm:gap-4">
               <Link href="/" className="hover:text-text">
-                New<span className="hidden sm:inline"> analysis</span>
+                {DEMO ? "Demo" : <>New<span className="hidden sm:inline"> analysis</span></>}
               </Link>
               <Link href="/replay" className="hover:text-text">
                 Replays

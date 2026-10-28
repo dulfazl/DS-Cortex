@@ -2,6 +2,21 @@ import type { DriftResult, LedgerEntry, Meta, Profile, Results, SessionSummary }
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
+/** Demo build (NEXT_PUBLIC_DEMO=1): no API server; recorded runs are static files under /demo. */
+export const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
+
+export type ReplayInfo = {
+  name: string;
+  file_name?: string;
+  problem_statement?: string;
+  task?: string | null;
+  metric?: string | null;
+  score?: number | null;
+  baseline?: number | null;
+  beyond_chance?: boolean | null;
+  duration_seconds?: number;
+};
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -10,7 +25,14 @@ export class ApiError extends Error {
   }
 }
 
+async function staticJson<T>(path: string): Promise<T> {
+  const res = await fetch(path);
+  if (!res.ok) throw new ApiError(res.status, `Could not load ${path}`);
+  return res.json() as Promise<T>;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (DEMO) throw new ApiError(0, "This is the demo site: it replays recorded runs and has no analysis server.");
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, init);
@@ -65,8 +87,15 @@ export const api = {
   },
   rerun: (id: string) => request<{ session_id: string }>(`/sessions/${id}/rerun`, { method: "POST" }),
   exportUrl: (id: string, file?: string) => `${API_URL}/sessions/${id}/export${file ? `?file=${encodeURIComponent(file)}` : ""}`,
-  replays: () => request<string[]>("/replays"),
-  replayResults: (name: string) => request<Results>(`/replays/${name}/results`),
+  replays: (): Promise<ReplayInfo[]> =>
+    DEMO ? staticJson<ReplayInfo[]>("/demo/index.json") : request<string[]>("/replays").then((names) => names.map((name) => ({ name }))),
+  replayResults: (name: string): Promise<Results> =>
+    DEMO
+      ? staticJson<{ results: Results }>(`/demo/${name}.json`).then((d) => ({ ...d.results, replay: true, replay_name: name }))
+      : request<Results>(`/replays/${name}/results`),
+  /** Event source for a replay: the API's stream, or the static recording played back in the browser. */
+  replayEventsUrl: (name: string, speed: number) =>
+    DEMO ? `static:/demo/${name}.json?speed=${speed}` : `${API_URL}/replays/${name}/events?speed=${speed}`,
 };
 
 export const EVENT_TYPES = [

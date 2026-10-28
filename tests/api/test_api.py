@@ -212,18 +212,11 @@ def test_rate_limit(client, fixtures_dir):
     assert codes == [200, 200, 429]
 
 
-def test_render_blueprint_lets_the_vercel_site_call_the_api(monkeypatch):
-    """The website runs on Vercel and the API on Render: the origin pattern in render.yaml must admit the
-    Vercel addresses (production and preview) and nothing else."""
-    from pathlib import Path
-
-    import yaml
-
+def test_origin_regex_admits_the_website_and_nothing_else(monkeypatch):
+    """A website on another host calls the API through ALLOWED_ORIGIN_REGEX: it must admit the site's
+    production and preview addresses and reject look-alikes."""
     from app.config import reset_settings
-    spec = yaml.safe_load((Path(__file__).resolve().parents[2] / "render.yaml").read_text())
-    assert [s["name"] for s in spec["services"]] == ["ds-cortex-api"]       # one free service fits the monthly hours
-    regex = next(e["value"] for e in spec["services"][0]["envVars"] if e["key"] == "ALLOWED_ORIGIN_REGEX")
-    monkeypatch.setenv("ALLOWED_ORIGIN_REGEX", regex)
+    monkeypatch.setenv("ALLOWED_ORIGIN_REGEX", r"https://ds-cortex[a-z0-9-]*\.vercel\.app")
     reset_settings()
     from app.main import create_app
     c = TestClient(create_app())
@@ -232,3 +225,30 @@ def test_render_blueprint_lets_the_vercel_site_call_the_api(monkeypatch):
         r = c.options("/meta", headers={"Origin": origin, "Access-Control-Request-Method": "GET"})
         assert (r.headers.get("access-control-allow-origin") == origin) is allowed, origin
     reset_settings()
+
+
+def test_export_demo_writes_static_replays(tmp_path, fixtures_dir):
+    """The demo website has no server: scripts.export_demo turns a completed run into the files it reads."""
+    import sys
+
+    from app.session import RunFlags, store
+    from scripts import export_demo
+    from workflows.pipeline_graph import PipelineRun
+    s = store.create(str(fixtures_dir / "classification.csv"), "Predict whether a customer will churn",
+                     flags=RunFlags(memory=False, tuning=False))
+    s = PipelineRun(s.id, interactive=False).run()
+    assert s.status == "completed", s.error
+    out = tmp_path / "demo"
+    monkey_argv = ["export_demo", str(out), f"{s.id}:churn-demo"]
+    old, sys.argv = sys.argv, monkey_argv
+    try:
+        export_demo.main()
+    finally:
+        sys.argv = old
+    index = json.loads((out / "index.json").read_text())
+    assert index[0]["name"] == "churn-demo" and index[0]["metric"] == "f1_macro" and index[0]["score"] is not None
+    run = json.loads((out / "churn-demo.json").read_text())
+    offsets = [e["offset"] for e in run["events"]]
+    assert offsets == sorted(offsets) and run["events"][-1]["type"] == "completed"
+    assert max(b - a for a, b in zip(offsets, offsets[1:])) <= export_demo.MAX_GAP_SECONDS
+    assert {"test", "candidates", "ledger", "plots"} <= set(run["results"])

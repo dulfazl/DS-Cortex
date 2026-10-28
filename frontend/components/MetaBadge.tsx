@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, DEMO } from "@/lib/api";
 import type { Meta } from "@/lib/types";
 
 export function MetaBadge() {
+  if (DEMO) return <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-muted">Demo · recorded runs</span>;
+  return <LiveMetaBadge />;
+}
+
+function LiveMetaBadge() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [down, setDown] = useState(false);
   useEffect(() => {

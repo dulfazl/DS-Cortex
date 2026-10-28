@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL, DEMO } from "@/lib/api";
 import { Banner } from "./ui";
 
 type State = "ok" | "waking" | "down";
@@ -11,6 +11,10 @@ type State = "ok" | "waking" | "down";
  * minute. Ping /healthz and say so while it wakes, instead of looking broken.
  */
 export function ServerStatus() {
+  return DEMO ? null : <ServerPing />;
+}
+
+function ServerPing() {
   const [state, setState] = useState<State>("ok");
   useEffect(() => {
     let cancelled = false;
